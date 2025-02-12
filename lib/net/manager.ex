@@ -17,8 +17,8 @@ defmodule Net.Manager do
     GenServer.call(__MODULE__, {:add_connection, conn})
   end
 
-  def remove_connection(conn) do
-    GenServer.call(__MODULE__, {:remove_connection, conn})
+  def has_connection?(addr) do
+    GenServer.call(__MODULE__, {:connection?, addr})
   end
 
   def handle_call(:connections, _from, state) do
@@ -26,10 +26,16 @@ defmodule Net.Manager do
   end
 
   def handle_call({:add_connection, conn}, _from, state) do
-    {:reply, state.connections, Map.put(state.connections, conn.ip, conn)}
+    new_connections = Map.put(state.connections, conn.addr, conn)
+    {:reply, new_connections, %{state | connections: new_connections}}
+  end
+
+  def handle_call({:connection?, addr}, _from, state) do
+    {:reply, Map.has_key?(state.connections, addr), state}
   end
 
   def handle_call({:remove_connection, conn}, _from, state) do
-    {:reply, state.connections, Map.delete(state.connections, conn.ip)}
+    new_connections = Map.delete(state.connections, conn.addr)
+    {:reply, new_connections, %{state | connections: new_connections}}
   end
 end

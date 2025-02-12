@@ -1,8 +1,8 @@
 defmodule Net.Conn do
   # ip, port, authenticated, service name
-  defstruct ip: nil, port: nil, authenticated: false, service: nil
+  defstruct addr: nil, authenticated: false, service: nil
 
-  def new(ip, port, authenticated, service) do
-    %Net.Conn{ip: ip, port: port, authenticated: authenticated, service: service}
+  def new(addr, authenticated, service) do
+    %Net.Conn{addr: addr, authenticated: authenticated, service: service}
   end
 end
