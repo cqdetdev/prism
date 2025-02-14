@@ -1,4 +1,4 @@
-defmodule Net.Packet.Packet do
+defmodule Net.Packet.DataPacket do
   use Protobuf, protoc_gen_elixir_version: "0.10.0", syntax: :proto3
 
   field :type, 1, type: :int32

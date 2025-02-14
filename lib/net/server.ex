@@ -2,7 +2,7 @@ defmodule Net.Server do
   use GenServer
   use Protobuf, protoc_gen_elixir_version: "0.10.0", syntax: :proto3
 
-  alias Net.Packet.{Login, AuthReponse, Packet}
+  alias Net.Packet.{Login, AuthReponse, DataPacket}
   alias Net.{Manager, Cluster}
 
   def start_link(opts) do
@@ -52,8 +52,8 @@ defmodule Net.Server do
   end
 
   defp handle_packet_sequence(_, ip, port, data) do
-    case Packet.decode(data) do
-      %Packet{type: 4, payload: {:update, _}} ->
+    case DataPacket.decode(data) do
+      %DataPacket{type: 4, payload: {:update, _}} ->
         IO.puts("Update packet received from #{format_address(ip, port)}")
       unknown -> IO.inspect(unknown)
     end
