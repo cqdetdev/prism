@@ -2,79 +2,67 @@ defmodule Net.Server do
   use GenServer
   use Protobuf, protoc_gen_elixir_version: "0.10.0", syntax: :proto3
 
-  alias Net.Packet.Login
+  alias Net.Packet.{Login, AuthReponse, Packet}
+  alias Net.{Manager, Cluster}
 
-  def start_link(port) do
-    GenServer.start_link(__MODULE__, port, name: __MODULE__)
+  def start_link(opts) do
+    port = opts[:port]
+    region = opts[:region]
+    Cluster.connect(region)
+    GenServer.start_link(__MODULE__, port, name: {:global, region})
   end
 
+  @impl true
   def init(port) do
-    {:ok, socket} = :gen_tcp.listen(port, [:binary, {:packet, 0}, active: false, reuseaddr: true])
-    IO.puts("TCP Server listening on port #{port}")
-    Task.start(fn -> accept_connections(socket) end)
-    {:ok, %{socket: socket, connections: %{}}}
+    IO.puts("UDP Server listening on port #{port}")
+    :gen_udp.open(port)
   end
 
-  defp accept_connections(socket) do
-    {:ok, client} = :gen_tcp.accept(socket)
-    Task.start(fn -> accept(client) end)
+  @impl true
+  def handle_info({:udp, _socket, ip, port, data}, socket) do
+    buffer = :erlang.iolist_to_binary(data)
+    addr = format_address(ip, port)
 
-    accept_connections(socket)
-  end
-
-  defp accept(client) do
-    case :inet.peername(client) do
-      {:ok, {ip, port}} ->
-        ip_string = :inet.ntoa(ip) |> List.to_string()
-        remote_addr = "#{ip_string}:#{port}"
-        IO.puts("Client connected from #{remote_addr}")
-
-        if Map.has_key?(Net.Manager.connections(), remote_addr) do
-          IO.puts("Client already connected")
-        else
-          Net.Manager.add_connection(Net.Conn.new(remote_addr, false, "test"))
-          IO.puts("Client connected")
-        end
-
-        read_packets(client, remote_addr)
-
-      {:error, reason} ->
-        IO.puts("Failed to get peer info: #{inspect(reason)}")
+    if Map.has_key?(Net.Manager.connections(), addr) do
+      handle_packet_sequence(socket, ip, port, buffer)
+    else
+      Manager.add_connection(Net.Conn.new(addr, false, "test"))
+      handle_login_sequence(socket, ip, port, buffer)
     end
+
+    {:noreply, socket}
   end
 
-  defp read_packets(client, remote_addr) do
-    case :gen_tcp.recv(client, 0) do
-      {:ok, data} ->
-        if !Net.Manager.has_connection?(remote_addr) do
-          do_login_sequence(client, remote_addr, data)
-        else
-
-        end
-
-
-      {:error, :closed} ->
-        IO.puts("Connection closed by #{remote_addr}")
-        # Net.Manager.remove_connection(remote_addr)
-
-      {:error, reason} ->
-        IO.puts("Error receiving data: #{inspect(reason)}")
-    end
+  @impl true
+  def handle_call({:update, %{from: from, data: data}}, _from, state) do
+    IO.puts("Backstream Update (from: #{from}): #{data}")
+    {:reply, :ok, state}
   end
 
-  defp do_login_sequence(client, remote_addr, data) do
+  defp handle_login_sequence(socket, ip, port, data) do
     Login.decode(data)
-      |> case do
-        packet ->
-          IO.puts("Received login packet from #{remote_addr}")
-          Net.Manager.add_connection(Net.Conn.new(remote_addr, true, packet.service))
-          read_packets(client, remote_addr)
-      end
-        read_packets(client, remote_addr)
+    |> case do
+      packet ->
+        addr = format_address(ip, port)
+        Net.Manager.add_connection(Net.Conn.new(addr, true, packet.service))
+        IO.puts("Login packet received from #{addr}")
+        resp = AuthReponse.encode(%AuthReponse{status: 0, message: "OK"})
+        send_response(socket, ip, port, resp)
+    end
   end
 
-  defp do_packet_sequence(client, remote_addr, data) do
-    IO.puts("Received packet from #{remote_addr}")
-    read_packets(client, remote_addr)
+  defp handle_packet_sequence(_, ip, port, data) do
+    case Packet.decode(data) do
+      %Packet{type: 4, payload: {:update, _}} ->
+        IO.puts("Update packet received from #{format_address(ip, port)}")
+      unknown -> IO.inspect(unknown)
+    end
+  end
+
+  defp format_address(ip, port), do: "#{:inet.ntoa(ip) |> List.to_string()}:#{port}"
+
+
+  defp send_response(socket, ip, port, message) do
+    :gen_udp.send(socket, ip, port, message)
   end
 end

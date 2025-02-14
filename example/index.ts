@@ -1,42 +1,63 @@
-import { Field, Message } from "protobufjs";
+import { Field, Message, OneOf } from "protobufjs";
+
 class LoginRequest extends Message<LoginRequest> {
   @Field.d(1, "string", "required", "default_service")
-  public service!: string;
+  public service!: number;
   @Field.d(2, "string", "required", "default_service")
   public token!: string;
 }
 
-const socket = await Bun.connect({
-    hostname: "localhost",
+class UpdateRequest extends Message<UpdateRequest> {
+  @Field.d(1, "string", "required")
+  public name!: string;
+  @Field.d(2, "string", "required")
+  public value!: string;
+  @Field.d(3, "bool", "required")
+  public persist_cache!: boolean;
+}
+
+class Packet extends Message<Packet> {
+  @Field.d(1, "int32", "required")
+  public type!: number;
+  
+  @Field.d(2, LoginRequest)
+  login!: LoginRequest;
+
+  @Field.d(4, UpdateRequest)
+  update?: UpdateRequest;
+
+  @OneOf.d("login", "update")
+  public payload!: LoginRequest | UpdateRequest;
+}
+
+
+
+const socket = await Bun.udpSocket({
+  connect: {
     port: 6969,
-    
-  
-    socket: {
-      data(socket, data) {
-        console
-      },
-      open(socket) {
-        const msg = new LoginRequest({
-          service: "pm-server",
-          token: "test",
-        })
-        socket.setNoDelay(true)
-
-        const buffer = LoginRequest.encode(msg).finish();
-        console.log(Buffer.from(buffer).length);
-        const written = socket.write(Buffer.from(buffer));
-        console.log(written);
-      },
-      close(socket) {},
-      drain(socket) {},
-      error(socket, error) {
-        console.log(error);
-      },
-  
-      // client-specific handlers
-      connectError(socket, error) {}, // connection failed
-      end(socket) {}, // connection closed by server
-      timeout(socket) {}, // connection timed out
+    hostname: '127.0.0.1',
+  },
+  socket: {
+    data(socket, data,) {
+      console.log(data);
     },
-  });
+  }
+});
 
+const sent = socket.send(
+  LoginRequest.encode({
+    service: "default_service",
+    token: "default_token",
+  }).finish()
+);
+
+const sent2 = socket.send(
+  Packet.encode({
+    type : 4,
+    update: new UpdateRequest({
+      name: "test",
+      value: "test",
+      persist_cache: true,
+    })
+  }).finish()
+);

@@ -3,4 +3,5 @@ defmodule Net.Packet.Update do
 
     field :name , 1, type: :string
     field :value, 2, type: :string
+    field :persist_cache , 3, type: :bool
 end
