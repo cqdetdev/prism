@@ -12,6 +12,10 @@ The typical problem with distributed MC servers is encountering the three main i
 Thus, the solution is to use a broker to extract all the database logic. However, we want a distributed broker
 so that we are able to limit latency but also have some way to handle synchronization between the brokers.
 
+## Architecture
+
+![Architecture](/assets/image.png)
+
 ## Features/Development
 
 - `Net.Server` - central server to handle all UDP traffic

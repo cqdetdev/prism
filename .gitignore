@@ -25,3 +25,5 @@ oomf-*.tar
 /example/node_modules/
 
 ./elixir_ls/
+
+config/
