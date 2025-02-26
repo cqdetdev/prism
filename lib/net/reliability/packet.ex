@@ -24,8 +24,6 @@ defmodule Net.Reliability.Packet do
   end
 
   defp generate_sequence_number do
-    # Simple implementation using random numbers
-    # In production, you might want to use a more sophisticated approach
     :rand.uniform(2_147_483_647)
   end
 

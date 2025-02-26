@@ -61,7 +61,6 @@ defmodule Net.Server do
     end
   end
 
-  # Handle retry timer
   def handle_info(:check_retransmissions, state) do
     Reliability.Manager.process_retransmissions(state.socket)
     {:noreply, state}
