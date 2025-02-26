@@ -9,6 +9,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "crc-32": "^1.2.2",
     "protobuf.js": "^1.1.2",
     "protobufjs": "^7.4.0"
   }

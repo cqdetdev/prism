@@ -1,4 +1,4 @@
-defmodule Net.Packet.AuthReponse do
+defmodule Net.Packet.AuthResponse do
   use Protobuf, protoc_gen_elixir_version: "0.10.0", syntax: :proto3
 
   field :status, 1, type: :int32

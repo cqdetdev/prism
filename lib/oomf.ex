@@ -7,6 +7,7 @@ defmodule Oomf do
   def start(_type, _args) do
     region = detect_region()
     children = [
+      Net.Reliability.Manager,
       {Data.Repo, []},
       {Redix, name: :redix},
       {Net.Manager, []},

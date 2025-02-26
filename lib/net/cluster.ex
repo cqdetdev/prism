@@ -1,4 +1,6 @@
 defmodule Net.Cluster do
+  require Logger
+
   def connect(region) do
     node =
       case region do
@@ -22,7 +24,7 @@ defmodule Net.Cluster do
   def broadcast_update(data) do
     Node.list()
     |> Enum.each(fn node ->
-      IO.puts("Sending update to #{node}")
+      Logger.debug("Sending update to #{node}")
 
       Node.spawn_link(node, fn ->
         GenServer.call({:global, :eu}, {:update, data})

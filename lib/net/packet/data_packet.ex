@@ -3,7 +3,8 @@ defmodule Net.Packet.DataPacket do
 
   field :type, 1, type: :int32
   oneof :payload, 2
+
   field :login, 2, type: Net.Packet.Login, oneof: 2
-  field :auth_response, 3, type: Net.Packet.AuthReponse, oneof: 2
+  field :auth_response, 3, type: Net.Packet.AuthResponse, oneof: 2
   field :update, 4, type: Net.Packet.Update, oneof: 2
 end
