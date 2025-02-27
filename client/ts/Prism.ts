@@ -22,7 +22,7 @@ export default class Prism {
         hostname: "127.0.0.1",
       },
       socket: {
-        data: this.onData.bind(this)
+        data: this.onData.bind(this),
       }
     });
   }
@@ -47,10 +47,10 @@ export default class Prism {
   
       const header = Buffer.alloc(9);
       header.writeUInt8(requestType, 0);
-      header.writeUInt32BE(seqNum, 1); // Write sequence number at byte 1
+      header.writeUInt32BE(seqNum, 1);
       const combinedBuffer = Buffer.concat([header, data]);
       let checksum = Bun.hash.crc32(combinedBuffer);
-      header.writeUInt32BE(checksum, 5); // Write checksum at byte 5
+      header.writeUInt32BE(checksum, 5);
   
       const packet = Buffer.concat([header, data]);
       this.pendingAcks.set(seqNum, [resolve, reject]);

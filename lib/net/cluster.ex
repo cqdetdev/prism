@@ -1,22 +1,24 @@
 defmodule Net.Cluster do
   require Logger
 
-  def connect(region) do
-    node =
-      case region do
-        :na -> :eu@localhost
-        :eu -> :na@localhost
-      end
+  @retry_interval 500
 
-    attempt_connection(node)
+  def connect(:na), do: attempt_connection(:eu@localhost)
+  def connect(:eu), do: attempt_connection(:na@localhost)
+  def connect(region) do
+    Logger.error("Unknown region: #{inspect(region)}")
+    :error
   end
 
   defp attempt_connection(node) do
     case Node.connect(node) do
-      true -> IO.puts("Connected to distributed node: #{node}")
+      true ->
+        Logger.info("Connected to distributed node: #{node}")
+        :ok
+
       false ->
-        IO.puts("Failed to connect to #{node}. Retrying in 5s...")
-        Process.sleep(5000)
+        Logger.error("Failed to connect to #{node}. Retrying in #{@retry_interval} ms...")
+        Process.sleep(@retry_interval)
         attempt_connection(node)
     end
   end
@@ -25,18 +27,17 @@ defmodule Net.Cluster do
     Node.list()
     |> Enum.each(fn node ->
       Logger.debug("Sending update to #{node}")
-
       Node.spawn_link(node, fn ->
-        n = node_to_region(node)
-        GenServer.call({:global, n}, {:update, data})
+        region = node_to_region(node)
+        GenServer.call({:global, region}, {:update, data})
       end)
     end)
   end
 
+  defp node_to_region(:eu@localhost), do: :eu
+  defp node_to_region(:na@localhost), do: :na
   defp node_to_region(node) do
-    case node do
-      :eu@localhost -> :eu
-      :na@localhost -> :na
-    end
+    Logger.warning("Unrecognized node: #{node}")
+    nil
   end
 end
