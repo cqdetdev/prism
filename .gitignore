@@ -26,4 +26,6 @@ prism-*.tar
 
 ./elixir_ls/
 
-config/
+./config/config.exs
+
+*.exs
