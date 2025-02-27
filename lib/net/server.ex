@@ -17,6 +17,7 @@ defmodule Net.Server do
   def init(%{port: port, region: region}) do
     Logger.debug("UDP Server listening on port #{port} in region #{region}")
     {:ok, socket} = :gen_udp.open(port, [:binary, active: true])
+    schedule_retransmissions()
     {:ok, %{socket: socket, region: region}}
   end
 
@@ -131,6 +132,10 @@ defmodule Net.Server do
     :gen_udp.send(socket, ip, port, b)
 
     {:ok, seq_num}
+  end
+
+  defp schedule_retransmissions do
+    Process.send_after(__MODULE__, :check_retransmissions, 500)
   end
 
   defp format_address(ip, port), do: "#{:inet.ntoa(ip) |> List.to_string()}:#{port}"

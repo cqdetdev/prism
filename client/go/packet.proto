@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package net.packet;
+
+option go_package = "net/packetpb";
+
+message DataPacket {
+  int32 type = 1;
+
+  oneof payload {
+    Login login = 2;
+    AuthResponse auth_response = 3;
+    Update update = 4;
+  }
+}
+
+message Login {
+  string service = 1;
+  string token = 2;
+}
+
+message AuthResponse {
+  int32 status = 1;
+  string message = 2;
+}
+
+message Update {
+  string name = 1;
+  string value = 2;
+  string type = 3;
+  bool persist_cache = 4;
+}

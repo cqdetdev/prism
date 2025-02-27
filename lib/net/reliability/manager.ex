@@ -36,7 +36,6 @@ defmodule Net.Reliability.Manager do
       processed_packets: %{} # %{addr => MapSet<seq_nums>}
     }
 
-    # Start the retry checker
     schedule_retry_check()
 
     {:ok, state}
@@ -136,37 +135,36 @@ defmodule Net.Reliability.Manager do
     {:reply, result, state}
   end
 
-  @impl true
-  def handle_info(:check_retransmissions, state) do
-    now = :os.system_time(:millisecond)
+@impl true
+def handle_info(:check_retransmissions, state) do
+  now = :os.system_time(:millisecond)
 
-    updated_pending = Enum.reduce(state.pending_packets, %{}, fn {addr, addr_map}, acc ->
-      {updated_addr_map, _} = Enum.reduce(addr_map, {%{}, 0}, fn {seq_num, {data, dest, sent_time, retries}}, {acc_map, retried_count} ->
-        if now - sent_time > @retry_interval do
-          if retries < @max_retries do
-            Logger.debug("Packet #{seq_num} to #{addr} needs retransmission")
-            {Map.put(acc_map, seq_num, {data, dest, sent_time, retries}), retried_count + 1}
-          else
-            Logger.warning("Packet #{seq_num} to #{addr} timed out after #{@max_retries} retries")
-            {acc_map, retried_count}
-          end
+  updated_pending = Enum.reduce(state.pending_packets, %{}, fn {addr, addr_map}, acc ->
+    {updated_addr_map, _} = Enum.reduce(addr_map, {%{}, 0}, fn {seq_num, {data, dest = {ip, port}, sent_time, retries}}, {acc_map, retried_count} ->
+      if now - sent_time > @retry_interval do
+        if retries < @max_retries do
+          Logger.debug("Retrying packet #{seq_num} to #{addr}, attempt #{retries + 1}")
+          {Map.put(acc_map, seq_num, {data, dest, now, retries + 1}), retried_count + 1}
         else
-          {Map.put(acc_map, seq_num, {data, dest, sent_time, retries}), retried_count}
+          Logger.warning("Packet #{seq_num} to #{addr} timed out after #{@max_retries} retries")
+          {acc_map, retried_count}
         end
-      end)
-
-      if map_size(updated_addr_map) > 0 do
-        Map.put(acc, addr, updated_addr_map)
       else
-        acc
+        {Map.put(acc_map, seq_num, {data, dest, sent_time, retries}), retried_count}
       end
     end)
 
-    schedule_retry_check()
+    if map_size(updated_addr_map) > 0 do
+      Map.put(acc, addr, updated_addr_map)
+    else
+      acc
+    end
+  end)
 
-    {:noreply, %{state | pending_packets: updated_pending}}
-  end
+  schedule_retry_check()
 
+  {:noreply, %{state | pending_packets: updated_pending}}
+end
   defp schedule_retry_check do
     Process.send_after(__MODULE__, :check_retransmissions, @retry_interval)
   end

@@ -1,5 +1,6 @@
 {
-  "name": "example",
+  "name": "oomf-client",
+  "description": "A typescript client for Oomf",
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
