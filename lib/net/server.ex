@@ -17,7 +17,9 @@ defmodule Net.Server do
   def init(%{port: port, region: region}) do
     Logger.debug("UDP Server listening on port #{port} in region #{region}")
     {:ok, socket} = :gen_udp.open(port, [:binary, active: true])
+
     schedule_retransmissions()
+
     {:ok, %{socket: socket, region: region}}
   end
 
@@ -79,10 +81,8 @@ defmodule Net.Server do
     addr = format_address(ip, port)
     {seq_num, packet} = Reliability.Packet.build_packet(message)
 
-    # Register for potential retransmission
     Reliability.Manager.register_packet(addr, seq_num, message, {ip, port})
 
-    # Send the packet
     :ok = :gen_udp.send(state.socket, ip, port, packet)
 
     {:reply, {:ok, seq_num}, state}

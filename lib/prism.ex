@@ -1,7 +1,4 @@
-defmodule Oomf do
-  @moduledoc """
-  Contains all the logic for the broker. Including the listener, and database.
-  """
+defmodule Prism do
   use Application
 
   def start(_type, _args) do

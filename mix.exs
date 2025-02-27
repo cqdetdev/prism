@@ -1,9 +1,9 @@
-defmodule Oomf.MixProject do
+defmodule Prism.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :oomf,
+      app: :prism,
       version: "0.1.0",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
@@ -15,7 +15,7 @@ defmodule Oomf.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {Oomf, []}
+      mod: {Prism, []}
     ]
   end
 

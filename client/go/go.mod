@@ -1,4 +1,4 @@
-module github.com/cqdetdev/oomf
+module github.com/cqdetdev/prism
 
 go 1.21.12
 

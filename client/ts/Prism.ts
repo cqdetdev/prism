@@ -2,7 +2,7 @@ import type { udp } from "bun";
 import DataPacket from "./proto/DataPacket";
 import { AckType } from "./proto/Types";
 
-export default class Oomf {
+export default class Prism {
   private pendingAcks: Map<number, [() => void, () => void]>;
   private socket!: udp.Socket<"buffer">;
 
@@ -54,6 +54,7 @@ export default class Oomf {
   
       const packet = Buffer.concat([header, data]);
       this.pendingAcks.set(seqNum, [resolve, reject]);
+      // @ts-expect-error
       this.socket.send(packet);
   
       setTimeout(() => {
@@ -76,6 +77,7 @@ export default class Oomf {
     const ack = Buffer.alloc(5);
     ack.writeUInt8(AckType.ACK, 0);
     ack.writeUInt32BE(seq, 1)
+    // @ts-expect-error
     sock.send(ack);
   }
 

@@ -1,8 +1,8 @@
 import Config
 
-config :oomf, ecto_repos: [Data.Repo]
+config :prism, ecto_repos: [Data.Repo]
 
-config :oomf, Data.Repo,
+config :prism, Data.Repo,
   adapter: Ecto.Adapters.Postgres,
   username: "postgres",
   password: "Wallah123",

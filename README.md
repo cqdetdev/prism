@@ -1,4 +1,4 @@
-# Oomf
+# Prism
 
 A simple, fast, and distributed data broker for distributed MC server use.
 

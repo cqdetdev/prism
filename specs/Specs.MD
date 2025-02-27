@@ -17,11 +17,11 @@ defmodule Instance do
     shard = detect_shard_region()
     head = is_head?()
 
-    {:ok, manager} = Oomf.ClusterManager.start_link([cluster, shard, head])
+    {:ok, manager} = Prism.ClusterManager.start_link([cluster, shard, head])
 
     manager
         |> register_service "PlayerHandler"
-        |> set_protocol Oomf.Protocol.UDP # or Oomf.Protocol.WS
+        |> set_protocol Prism.Protocol.UDP # or Prism.Protocol.WS
         |> register_packet_handler(Packet.Login, handle_login/1)
         |> register_packet_handler(Packet.Fetch, handle_fetch/1)
         |> register_packet_handler(Packet.Update, handle_update/1)

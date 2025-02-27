@@ -1,5 +1,5 @@
 defmodule Data.Repo do
   use Ecto.Repo,
-    otp_app: :oomf,
+    otp_app: :prism,
     adapter: Ecto.Adapters.Postgres
 end

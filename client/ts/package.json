@@ -1,6 +1,6 @@
 {
-  "name": "oomf-client",
-  "description": "A typescript client for Oomf",
+  "name": "prism-client",
+  "description": "A typescript client for Prism",
   "module": "index.ts",
   "type": "module",
   "devDependencies": {

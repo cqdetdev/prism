@@ -1,16 +1,16 @@
-import Oomf from "./Oomf";
+import Prism from "./Prism";
 import DataPacket from "./proto/DataPacket";
 import LoginRequest from "./proto/requests/LoginRequest";
 import UpdateRequest from "./proto/requests/UpdateRequest";
 import { AckType, UpdateType } from "./proto/Types";
 
-const oomf = new Oomf("127.0.0.1", 6969);
-await oomf.start();
+const prism = new Prism("127.0.0.1", 6969);
+await prism.start();
 
-const addr = oomf.getHost(); 
-const port = oomf.getPort();
+const addr = prism.getHost(); 
+const port = prism.getPort();
 
-await oomf.send(
+await prism.send(
     LoginRequest.encode({
         service: "default_service",
         token: "default_token",
@@ -20,7 +20,7 @@ await oomf.send(
     port,
 );
 
-await oomf.send(
+await prism.send(
     DataPacket.encode({
         type: 4,
         update: new UpdateRequest({

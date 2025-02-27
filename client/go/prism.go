@@ -13,21 +13,21 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type Oomf struct {
+type Prism struct {
 	host        string
 	port        int
 	conn        net.Conn
 	pendingAcks sync.Map
 }
 
-func NewOomf(host string, port int) *Oomf {
-	return &Oomf{
+func NewPrism(host string, port int) *Prism {
+	return &Prism{
 		host: host,
 		port: port,
 	}
 }
 
-func (o *Oomf) Start() error {
+func (o *Prism) Start() error {
 	conn, err := net.Dial("udp", "127.0.0.1:6969")
 	if err != nil {
 		return err
@@ -38,7 +38,7 @@ func (o *Oomf) Start() error {
 	return nil
 }
 
-func (o *Oomf) listen() {
+func (o *Prism) listen() {
 	buffer := make([]byte, 1024)
 	for {
 		n, err := o.conn.Read(buffer)
@@ -68,7 +68,7 @@ func (o *Oomf) listen() {
 	}
 }
 
-func (o *Oomf) handleDataPacket(data []byte, seqNum uint32) {
+func (o *Prism) handleDataPacket(data []byte, seqNum uint32) {
 	fmt.Printf("Received Data Packet (seqNum: %d, data: %x)\n", seqNum, data)
 	ack := make([]byte, 5)
 	ack[0] = 2
@@ -76,7 +76,7 @@ func (o *Oomf) handleDataPacket(data []byte, seqNum uint32) {
 	o.conn.Write(ack)
 }
 
-func (o *Oomf) handleAckPacket(seqNum uint32) {
+func (o *Prism) handleAckPacket(seqNum uint32) {
 	if ch, ok := o.pendingAcks.Load(seqNum); ok {
 		close(ch.(chan struct{}))
 		o.pendingAcks.Delete(seqNum)
@@ -86,7 +86,7 @@ func (o *Oomf) handleAckPacket(seqNum uint32) {
 	}
 }
 
-func (o *Oomf) Send(data []byte, requestType int) error {
+func (o *Prism) Send(data []byte, requestType int) error {
 	seqNum := rand.Uint32()
 	header := make([]byte, 9)
 	header[0] = byte(requestType)
@@ -116,8 +116,8 @@ func (o *Oomf) Send(data []byte, requestType int) error {
 }
 
 func main() {
-	oomf := NewOomf("127.0.0.1", 6969)
-	if err := oomf.Start(); err != nil {
+	Prism := NewPrism("127.0.0.1", 6969)
+	if err := Prism.Start(); err != nil {
 		fmt.Println("Error starting UDP client:", err)
 		return
 	}
@@ -131,7 +131,7 @@ func main() {
 		panic(err)
 	}
 
-	_, err = oomf.conn.Write(rawLogin)
+	_, err = Prism.conn.Write(rawLogin)
 	if err != nil {
 		fmt.Println("Failed to send login:", err)
 	}
@@ -153,7 +153,7 @@ func main() {
 		panic(err)
 	}
 
-	_, err = oomf.conn.Write(rawData)
+	_, err = Prism.conn.Write(rawData)
 	if err != nil {
 		fmt.Println("Failed to send data packet:", err)
 	}
