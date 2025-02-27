@@ -27,8 +27,16 @@ defmodule Net.Cluster do
       Logger.debug("Sending update to #{node}")
 
       Node.spawn_link(node, fn ->
-        GenServer.call({:global, :eu}, {:update, data})
+        n = node_to_region(node)
+        GenServer.call({:global, n}, {:update, data})
       end)
     end)
+  end
+
+  defp node_to_region(node) do
+    case node do
+      :eu@localhost -> :eu
+      :na@localhost -> :na
+    end
   end
 end

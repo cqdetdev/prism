@@ -14,7 +14,7 @@ so that we are able to limit latency but also have some way to handle synchroniz
 
 ## Architecture
 
-![Architecture](/assets/image.png)
+![Architecture](/assets/diagram.png)
 
 ## Features/Development
 
