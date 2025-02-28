@@ -1,22 +1,13 @@
 defmodule Net.Cluster do
   require Logger
-
   @retry_interval 500
 
-  def connect(:na) do
-    attempt_connection(:eu@localhost)
-    attempt_connection(:as@localhost)
+  def connect(%{address: _address, peers: peers}) when is_list(peers) do
+    Enum.each(peers, &attempt_connection/1)
   end
-  def connect(:eu) do
-    attempt_connection(:na@localhost)
-    attempt_connection(:as@localhost)
-  end
-  def connect(:as) do
-    attempt_connection(:na@localhost)
-    attempt_connection(:eu@localhost)
-  end
-  def connect(region) do
-    Logger.error("Unknown region: #{inspect(region)}")
+
+  def connect(region_config) do
+    Logger.error("Invalid region configuration: #{inspect(region_config)}")
     :error
   end
 
@@ -38,17 +29,8 @@ defmodule Net.Cluster do
     |> Enum.each(fn node ->
       Logger.debug("Sending update to #{node}")
       Node.spawn_link(node, fn ->
-        region = node_to_region(node)
-        GenServer.call({:global, region}, {:update, data})
+        GenServer.call({:global, node}, {:update, data})
       end)
     end)
-  end
-
-  defp node_to_region(:eu@localhost), do: :eu
-  defp node_to_region(:na@localhost), do: :na
-  defp node_to_region(:as@localhost), do: :as
-  defp node_to_region(node) do
-    Logger.warning("Unrecognized node: #{node}")
-    nil
   end
 end

@@ -10,7 +10,9 @@ defmodule Net.Server do
   def start_link(opts) do
     port = opts[:port]
     region = opts[:region]
-    Cluster.connect(region)
+    Cluster.connect(%{address: region, peers: Application.get_env(:prism, :regions)
+      |> Enum.find(fn {_key, cfg} -> cfg.address == region end)
+      |> elem(1) |> Map.get(:peers, [])})
     GenServer.start_link(__MODULE__, %{port: port, region: region}, name: {:global, region})
   end
 

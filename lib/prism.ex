@@ -15,16 +15,14 @@ defmodule Prism do
   end
 
   defp detect_region do
-    case System.get_env("REGION") do
-      "NA" -> :na
-      "EU" -> :eu
-      "AS" -> :as
-      _ -> :unknown
-    end
+    region_key = System.get_env("REGION") || "unknown"
+    Application.get_env(:prism, :regions)
+    |> Map.get(region_key, %{address: :unknown, port: nil, peers: []})
   end
 
-  defp start_server(:na), do: [{Net.Server, [port: 6969, region: :na]}]
-  defp start_server(:eu), do: [{Net.Server, [port: 7979, region: :eu]}]
-  defp start_server(:as), do: [{Net.Server, [port: 8989, region: :as]}]
+  defp start_server(%{address: address, port: port}) when is_integer(port) do
+    [{Net.Server, [port: port, region: address]}]
+  end
+
   defp start_server(_), do: []
 end
