@@ -115,8 +115,13 @@ func (o *Prism) Send(data []byte, requestType int) error {
 	}
 }
 
+const (
+	ADDR = "127.0.0.1"
+	PORT = 6969
+)
+
 func main() {
-	Prism := NewPrism("127.0.0.1", 6969)
+	Prism := NewPrism(ADDR, PORT)
 	if err := Prism.Start(); err != nil {
 		fmt.Println("Error starting UDP client:", err)
 		return
