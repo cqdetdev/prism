@@ -18,8 +18,8 @@ export default class Prism {
   public async start() {
     this.socket = await Bun.udpSocket({
       connect: {
-        port: 6969,
-        hostname: "127.0.0.1",
+        port: this.port,
+        hostname: this.host,
       },
       socket: {
         data: this.onData.bind(this),

@@ -6,4 +6,5 @@ export enum UpdateType {
 export enum AckType {
   DATA = 1,
   ACK = 2,
+  NACK = 3,
 }

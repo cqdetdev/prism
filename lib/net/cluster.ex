@@ -3,8 +3,18 @@ defmodule Net.Cluster do
 
   @retry_interval 500
 
-  def connect(:na), do: attempt_connection(:eu@localhost)
-  def connect(:eu), do: attempt_connection(:na@localhost)
+  def connect(:na) do
+    attempt_connection(:eu@localhost)
+    attempt_connection(:as@localhost)
+  end
+  def connect(:eu) do
+    attempt_connection(:na@localhost)
+    attempt_connection(:as@localhost)
+  end
+  def connect(:as) do
+    attempt_connection(:na@localhost)
+    attempt_connection(:eu@localhost)
+  end
   def connect(region) do
     Logger.error("Unknown region: #{inspect(region)}")
     :error
@@ -36,6 +46,7 @@ defmodule Net.Cluster do
 
   defp node_to_region(:eu@localhost), do: :eu
   defp node_to_region(:na@localhost), do: :na
+  defp node_to_region(:as@localhost), do: :as
   defp node_to_region(node) do
     Logger.warning("Unrecognized node: #{node}")
     nil

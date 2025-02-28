@@ -1,4 +1,4 @@
-module github.com/cqdetdev/prism
+module github.com/prism/prism
 
 go 1.21.12
 
