@@ -3,7 +3,11 @@ defmodule Net.Server do
   use Protobuf, protoc_gen_elixir_version: "0.10.0", syntax: :proto3
 
   alias Net.Packet.{Builder, Login, DataPacket}
-  alias Net.{Cluster, Reliability}
+  alias Net.{Cluster, Reliability.Packet, Reliability.Parser}
+  alias Net.Conn
+  alias Net.Reliability.Manager, as: ReliabilityManager
+  alias Net.Conn.Manager, as: ConnManager
+  alias Net.Service.Registry
 
   require Logger
 
@@ -21,6 +25,7 @@ defmodule Net.Server do
     Logger.debug("UDP Server listening on port #{port} in region #{region}")
     {:ok, socket} = :gen_udp.open(port, [:binary, active: true])
     schedule_retransmissions()
+
     {:ok, Map.put(state, :socket, socket)}
   end
 
@@ -29,19 +34,19 @@ defmodule Net.Server do
     addr = format_address(ip, port)
     buffer = :erlang.iolist_to_binary(data)
 
-    case Reliability.Parser.parse_packet(buffer) do
+    case Parser.parse_packet(buffer) do
       {:ack, seq_num} ->
         Logger.debug("Received reliable ACK from #{addr}")
-        Reliability.Manager.acknowledge_packet(addr, seq_num)
+        ReliabilityManager.acknowledge_packet(addr, seq_num)
         {:noreply, state}
 
       {:data, seq_num, payload, _checksum} ->
         Logger.debug("Received reliable data packet from #{addr}")
         send_ack(state.socket, ip, port, seq_num)
 
-        unless Reliability.Manager.already_processed?(addr, seq_num) do
-          Reliability.Manager.mark_as_processed(addr, seq_num)
-          if Map.has_key?(Net.Manager.connections(), addr) do
+        unless ReliabilityManager.already_processed?(addr, seq_num) do
+          ReliabilityManager.mark_as_processed(addr, seq_num)
+          if Map.has_key?(ConnManager.connections(), addr) do
             handle_packet_sequence(state.socket, ip, port, payload)
           else
             handle_login_sequence(state.socket, ip, port, payload)
@@ -57,7 +62,7 @@ defmodule Net.Server do
   end
 
   def handle_info(:check_retransmissions, state) do
-    Reliability.Manager.process_retransmissions(state.socket)
+    ReliabilityManager.process_retransmissions(state.socket)
     schedule_retransmissions()
     {:noreply, state}
   end
@@ -72,8 +77,8 @@ defmodule Net.Server do
   @impl true
   def handle_call({:send_reliable, ip, port, message}, _from, state) do
     addr = format_address(ip, port)
-    {seq_num, packet} = Reliability.Packet.build_packet(message)
-    Reliability.Manager.register_packet(addr, seq_num, message, {ip, port})
+    {seq_num, packet} = Packet.build_packet(message)
+    ReliabilityManager.register_packet(addr, seq_num, message, {ip, port})
     :ok = :gen_udp.send(state.socket, ip, port, packet)
     {:reply, {:ok, seq_num}, state}
   end
@@ -83,7 +88,7 @@ defmodule Net.Server do
 
     try do
       packet = Login.decode(data)
-      Net.Manager.add_connection(Net.Conn.new(addr, true, packet.service))
+      ConnManager.add_connection(Conn.new(addr, true, packet.service))
       Logger.debug("Login packet received from #{addr}")
 
       encoded = Builder.auth_response("OK", 0)
@@ -96,24 +101,42 @@ defmodule Net.Server do
 
   defp handle_packet_sequence(_socket, ip, port, data) do
     case DataPacket.decode(data) do
-      %DataPacket{type: 4, payload: {:update, pk}} ->
-        Logger.debug("Update packet received from #{format_address(ip, port)}")
-        Cluster.broadcast_update(%{from: Node.self(), data: pk})
+      %DataPacket{type: type, payload: payload} ->
+        addr = format_address(ip, port)
+        conn = ConnManager.get_connection(addr)
+        if Registry.is_packet_allowed?(conn.service, type) do
+          Logger.debug("Packet successfully received from #{addr} with type #{type} and payload #{inspect(payload)}")
+          case {type, payload} do
+            {4, {:update, pk}} ->
+              Logger.debug("Update packet received from #{format_address(ip, port)}")
+              Cluster.broadcast_update(%{from: Node.self(), data: pk})
+            _ ->
+              Logger.debug("Unknown packet type #{type} with payload #{inspect(payload)}")
+          end
+        else
+          service = Registry.get_service(conn.service)
+          if service == nil do
+            Logger.debug("Packet received from #{addr} with type #{type} from invalid service (#{conn.service})")
+          else
+            Logger.debug("Packet received from #{addr} with type #{type} is not valid for the service (#{conn.service}) [#{inspect service.valid_packets}].")
+          end
+        end
+
       unknown ->
         IO.inspect(unknown)
     end
   end
 
   defp send_ack(socket, ip, port, seq_num) do
-    ack_packet = Reliability.Packet.build_ack_packet(seq_num)
+    ack_packet = Packet.build_ack_packet(seq_num)
     :gen_udp.send(socket, ip, port, ack_packet)
   end
 
   defp send_reliable(socket, ip, port, message) do
-    {seq_num, packet} = Net.Reliability.Packet.build_packet(message)
+    {seq_num, packet} = Packet.build_packet(message)
     addr = format_address(ip, port)
 
-    Net.Reliability.Manager.register_packet(addr, seq_num, message, {ip, port})
+    ReliabilityManager.register_packet(addr, seq_num, message, {ip, port})
 
     <<131, 109, _length::32, bin::binary>> = :erlang.term_to_binary(packet)
     :gen_udp.send(socket, ip, port, bin)

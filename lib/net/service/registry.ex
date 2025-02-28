@@ -3,17 +3,21 @@ defmodule Net.Service.Registry do
 
   require Logger
 
+  def start_link(_) do
+    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
+  end
+
   @impl true
   def init(_args) do
     {:ok, %{}}
   end
 
-  def start_link(_) do
-    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
-  end
-
   def register_service(name, token, packet_ids) do
     GenServer.call(__MODULE__, {:register, name, token, packet_ids})
+  end
+
+  def get_service(name) do
+    GenServer.call(__MODULE__, {:get, name})
   end
 
   def verify_service(name, token) do
@@ -45,6 +49,11 @@ defmodule Net.Service.Registry do
       %{token: ^token} -> {:reply, :ok, state}
       _ -> {:reply, {:error, :invalid_credentials}, state}
     end
+  end
+
+  @impl true
+  def handle_call({:get, name}, _from, state) do
+    {:reply, Map.get(state, name, nil), state}
   end
 
   def handle_call({:is_packet_allowed, name, packet_id}, _from, state) do

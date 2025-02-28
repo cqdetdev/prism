@@ -4,7 +4,7 @@ import LoginRequest from "./proto/requests/LoginRequest";
 import UpdateRequest from "./proto/requests/UpdateRequest";
 import { AckType, UpdateType } from "./proto/Types";
 
-const prism = new Prism("127.0.0.1", 7979);
+const prism = new Prism("127.0.0.1", 6969);
 await prism.start();
 
 const addr = prism.getHost(); 

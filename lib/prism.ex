@@ -4,17 +4,19 @@ defmodule Prism do
   def start(_type, _args) do
     region = detect_region()
     children = [
+      Net.Service.Registry,
       Net.Reliability.Manager,
-      {Data.Repo, []},
+      Net.Conn.Manager,
+      Data.Repo,
       {Redix, name: :redix},
-      {Net.Manager, []},
     ] ++ start_server(region)
 
     opts = [strategy: :one_for_one, name: Net.Listener.Supervisor]
+    {:ok, supervisor} = Supervisor.start_link(children, opts)
 
-    Net.Service.Registry.register_service("players", "Players-Token", [])
+    register_services()
 
-    Supervisor.start_link(children, opts)
+    {:ok, supervisor}
   end
 
   defp detect_region do
@@ -28,4 +30,8 @@ defmodule Prism do
   end
 
   defp start_server(_), do: []
+
+  defp register_services do
+    Net.Service.Registry.register_service("default_service", "default_service", [4])
+  end
 end
