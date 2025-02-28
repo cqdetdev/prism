@@ -11,6 +11,9 @@ defmodule Prism do
     ] ++ start_server(region)
 
     opts = [strategy: :one_for_one, name: Net.Listener.Supervisor]
+
+    Net.Service.Registry.register_service("players", "Players-Token", [])
+
     Supervisor.start_link(children, opts)
   end
 
