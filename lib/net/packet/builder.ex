@@ -4,7 +4,7 @@ defmodule Net.Packet.Builder do
   def auth_response(message, status) do
     auth_response = %AuthResponse{message: message, status: status}
 
-    data_packet(2, :auth_response, auth_response)
+    data_packet(3, :auth_response, auth_response)
   end
 
   defp data_packet(type, id, payload) do

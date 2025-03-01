@@ -46,6 +46,7 @@ defmodule Net.Service.Registry do
   @impl true
   def handle_call({:verify, name, token}, _from, state) do
     case Map.get(state, name) do
+      nil -> {:reply, {:error, :invalid_service}, state}
       %{token: ^token} -> {:reply, :ok, state}
       _ -> {:reply, {:error, :invalid_credentials}, state}
     end

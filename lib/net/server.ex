@@ -88,11 +88,23 @@ defmodule Net.Server do
 
     try do
       packet = Login.decode(data)
-      ConnManager.add_connection(Conn.new(addr, true, packet.service))
-      Logger.debug("Login packet received from #{addr}")
+      IO.inspect packet
+      case Registry.verify_service(packet.service, packet.token) do
+        :ok ->
+          Logger.debug("Valid login packet received from #{addr} (service: #{packet.service})")
+          ConnManager.add_connection(Conn.new(addr, true, packet.service))
+          encoded = Builder.auth_response("OK", 2)
+          send_reliable(socket, ip, port, encoded)
 
-      encoded = Builder.auth_response("OK", 0)
-      send_reliable(socket, ip, port, encoded)
+        {:error, :invalid_credentials} ->
+          Logger.debug("Invalid login packet received from #{addr} (service: #{packet.service})")
+          encoded = Builder.auth_response("INVALID_CREDENTIALS", 1)
+          send_reliable(socket, ip, port, encoded)
+        {:error, :invalid_service} ->
+          Logger.debug("Invalid login packet received from #{addr} (service: #{packet.service})")
+          encoded = Builder.auth_response("INVALID_SERVICE", 1)
+          send_reliable(socket, ip, port, encoded)
+      end
     rescue
       _ ->
         Logger.debug("Invalid login packet from #{addr}")
