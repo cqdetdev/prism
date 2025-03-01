@@ -88,7 +88,6 @@ defmodule Net.Server do
 
     try do
       packet = Login.decode(data)
-      IO.inspect packet
       case Registry.verify_service(packet.service, packet.token) do
         :ok ->
           Logger.debug("Valid login packet received from #{addr} (service: #{packet.service})")
