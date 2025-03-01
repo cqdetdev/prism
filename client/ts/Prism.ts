@@ -9,13 +9,17 @@ export default class Prism {
   private host: string;
   private port: number;
 
+  private closed: boolean
+
   public constructor(host: string, port: number) {
     this.pendingAcks = new Map();
     this.host = host;
     this.port = port;
+    this.closed = true;
   }
 
   public async start() {
+    this.closed = false;
     this.socket = await Bun.udpSocket({
       connect: {
         port: this.port,
@@ -41,7 +45,7 @@ export default class Prism {
     }
   }
 
-  public async send(data: Uint8Array, requestType: number, addr: string, port: number): Promise<void> {
+  public async send(data: Uint8Array, requestType: number): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const seqNum = Math.floor(Math.random() * 0xffffffff);
   
@@ -60,7 +64,11 @@ export default class Prism {
       setTimeout(() => {
         if (this.pendingAcks.has(seqNum)) {
           this.pendingAcks.delete(seqNum);
-          reject(new Error(`ACK not received for seqNum: ${seqNum}`));
+          if (!this.closed) {
+            console.error(`ACK not received for seqNum: ${seqNum}`);
+          } else {
+            console.error("Socket closed, not sending reject");
+          }
         }
       }, 5000);
     });
@@ -79,6 +87,11 @@ export default class Prism {
     ack.writeUInt32BE(seq, 1)
     // @ts-expect-error
     sock.send(ack);
+
+    switch (packet.type) {
+      case 3: this.handleAuthResponse(packet);
+      break;
+    }
   }
 
   private handleAckPacket(raw: Buffer, sock: udp.Socket<"buffer">, addr: string, port: number) {
@@ -91,6 +104,14 @@ export default class Prism {
       console.log(`ACK confirmed, removed seqNum ${seq} from pending list`);
     } else {
       console.warn(`Received ACK for unknown seqNum: ${seq}`);
+    }
+  }
+
+  private handleAuthResponse(packet: DataPacket) {
+    const authResponse = packet.authResponse!;
+    if (authResponse.status === 1) {
+      console.log("Auth failed: ", authResponse.message);
+      this.socket.close();
     }
   }
 

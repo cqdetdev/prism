@@ -7,17 +7,12 @@ import { AckType, UpdateType } from "./proto/Types";
 const prism = new Prism("127.0.0.1", 6969);
 await prism.start();
 
-const addr = prism.getHost(); 
-const port = prism.getPort();
-
 await prism.send(
     LoginRequest.encode({
         service: "default_service",
         token: "default_token",
     }).finish(),
     AckType.DATA,
-    addr,
-    port,
 );
 
 await prism.send(
@@ -31,6 +26,4 @@ await prism.send(
         }),
     }).finish(),
     AckType.DATA,
-    addr,
-    port
 );
