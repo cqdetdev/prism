@@ -30,8 +30,9 @@ so that we are able to limit latency but also have some way to handle synchroniz
 - [x] Basic UDP server
 - [x] Basic packet handling
 - [x] Basic cluster connection
-- [ ] Finish packet layer
-- [ ] Add service authentication
+- [x] Finish packet layer
+- [x] Add service authentication
+- [x] Implemented security via AES encryption
 - [ ] Add database connection and redis connection
 - [x] Add proper regional handling
 - [ ] Find a way to combat synchronization issues (few will arise because of Cluster implementation)
