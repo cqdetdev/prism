@@ -24,6 +24,8 @@ so that we are able to limit latency but also have some way to handle synchroniz
 - `Net.Packet` - Protobuf packets to handle all the different packet types
 - `Net.Cluster` - functions to connect to other nodes and broadcast updates (via OTP)
 - `Net.Reliablity` - enforces reliablity on all packets as well as handling retries
+- `Net.Security` - utilizes AES to encrypt and decrypt incoming packets
+
 
 ## Current Status
 
