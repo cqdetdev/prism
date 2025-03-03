@@ -1,3 +1,5 @@
+<img height="128" alt="image" src="./assets/logo.jpg" align="right">
+
 # Prism
 
 A simple, fast, and distributed data broker for clustered server use.
