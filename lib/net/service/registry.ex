@@ -48,7 +48,8 @@ defmodule Net.Service.Registry do
     case Map.get(state, name) do
       nil -> {:reply, {:error, :invalid_service}, state}
       %{token: ^token} -> {:reply, :ok, state}
-      _ -> {:reply, {:error, :invalid_credentials}, state}
+      _ ->
+        {:reply, {:error, :invalid_credentials}, state}
     end
   end
 

@@ -1,3 +1,5 @@
-defmodule Net.Proto.WebSocket do
-  @behaviour Net.Proto
-end
+# defmodule Net.Proto.Websocket do
+#   alias Net.Proto
+
+#   @behaviour Proto
+# end

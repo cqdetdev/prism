@@ -2,9 +2,9 @@ import Prism from "./Prism";
 import DataPacket from "./proto/DataPacket";
 import LoginRequest from "./proto/requests/LoginRequest";
 import UpdateRequest from "./proto/requests/UpdateRequest";
-import { AckType, UpdateType } from "./proto/Types";
+import { PacketType, UpdateType } from "./proto/Types";
 
-const prism = new Prism("127.0.0.1", 6969);
+const prism = new Prism("127.0.0.1", 6969, "secret-auth-key-123=============");
 await prism.start();
 
 await prism.send(
@@ -12,7 +12,7 @@ await prism.send(
         service: "default_service",
         token: "default_token",
     }).finish(),
-    AckType.DATA,
+    PacketType.DATA,
 );
 
 await prism.send(
@@ -25,5 +25,5 @@ await prism.send(
         persistRedis: true,
         }),
     }).finish(),
-    AckType.DATA,
+    PacketType.DATA,
 );
