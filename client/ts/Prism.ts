@@ -50,8 +50,8 @@ export default class Prism {
     }
 
     const iv = raw.subarray(0, IV_LENGTH); 
-    const ciphertext = raw.subarray(IV_LENGTH, raw.length - 16);
-    const tag = raw.subarray(raw.length - 16);
+    const ciphertext = raw.subarray(IV_LENGTH, raw.length - TAG_LENGTH);
+    const tag = raw.subarray(raw.length - TAG_LENGTH);
 
     if (iv.length !== IV_LENGTH || tag.length !== TAG_LENGTH) {
       console.error("Invalid IV or tag length");
@@ -108,7 +108,6 @@ export default class Prism {
     const cipher = createCipheriv("aes-256-gcm", this.key, iv);
     const ciphertext = Buffer.concat([cipher.update(data), cipher.final()]);
     const tag = cipher.getAuthTag();
-    console.log(`Encrypted data: ${JSON.stringify({ iv, ciphertext, tag })}`);
     return { iv, ciphertext, tag };
   }
 

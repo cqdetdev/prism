@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "cf9ada31df800cc087e4fcf9cb8c4a91",
+    "content-hash": "548bdd12b75d55315d3be6bbf8c56b56",
     "packages": [
         {
             "name": "google/protobuf",
@@ -49,6 +49,48 @@
                 "source": "https://github.com/protocolbuffers/protobuf-php/tree/v4.29.3"
             },
             "time": "2025-01-08T21:00:13+00:00"
+        },
+        {
+            "name": "pocketmine/binaryutils",
+            "version": "0.2.6",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/pmmp/BinaryUtils.git",
+                "reference": "ccfc1899b859d45814ea3592e20ebec4cb731c84"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/pmmp/BinaryUtils/zipball/ccfc1899b859d45814ea3592e20ebec4cb731c84",
+                "reference": "ccfc1899b859d45814ea3592e20ebec4cb731c84",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4 || ^8.0",
+                "php-64bit": "*"
+            },
+            "require-dev": {
+                "phpstan/extension-installer": "^1.0",
+                "phpstan/phpstan": "~1.10.3",
+                "phpstan/phpstan-phpunit": "^1.0",
+                "phpstan/phpstan-strict-rules": "^1.0.0",
+                "phpunit/phpunit": "^9.5 || ^10.0 || ^11.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "pocketmine\\utils\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-3.0"
+            ],
+            "description": "Classes and methods for conveniently handling binary data",
+            "support": {
+                "issues": "https://github.com/pmmp/BinaryUtils/issues",
+                "source": "https://github.com/pmmp/BinaryUtils/tree/0.2.6"
+            },
+            "time": "2024-03-04T15:04:17+00:00"
         },
         {
             "name": "protobuf-php/protobuf",

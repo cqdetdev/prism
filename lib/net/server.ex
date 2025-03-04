@@ -172,6 +172,9 @@ defmodule Net.Server do
       send =
         if encrypt do
           {iv, ciphertext, tag} = Security.encrypt(bin)
+          IO.inspect iv
+          IO.inspect ciphertext
+          IO.inspect tag
           <<iv::binary, ciphertext::binary, tag::binary>>
         else
           bin

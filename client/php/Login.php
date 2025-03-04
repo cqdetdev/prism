@@ -3,8 +3,10 @@
 # NO CHECKED-IN PROTOBUF GENCODE
 # source: packet.proto
 
-require './GPBMetadata/Packet.php';
+require "GPBMetadata/Packet.php";
 
+use Google\Protobuf\Internal\GPBType;
+use Google\Protobuf\Internal\RepeatedField;
 use Google\Protobuf\Internal\GPBUtil;
 
 /**

@@ -19,10 +19,10 @@ await prism.send(
     DataPacket.encode({
         type: 4,
         update: new UpdateRequest({
-        name: "test",
-        value: "1",
-        type: UpdateType.KILLS,
-        persistRedis: true,
+            name: "test",
+            value: "1",
+            type: UpdateType.KILLS,
+            persistRedis: true,
         }),
     }).finish(),
     PacketType.DATA,
