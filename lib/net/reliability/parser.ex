@@ -16,10 +16,10 @@ defmodule Net.Reliability.Parser do
         if valid_checksum?(check, checksum) do
           {:data, seq_num, dec, checksum}
         else
-          {:error, :invalid_checksum}
+          {:error, :invalid_checksum, :erlang.crc32(check), checksum}
         end
-      {:error, :invalid_key_size} ->
-        {:error, :invalid_key_size}
+      {:error, :invalid_key_size, size} ->
+        {:error, :invalid_key_size, size}
       {:error, :decryption_failed} ->
         {:error, :decryption_failed}
     end

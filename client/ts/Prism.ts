@@ -108,6 +108,7 @@ export default class Prism {
     const cipher = createCipheriv("aes-256-gcm", this.key, iv);
     const ciphertext = Buffer.concat([cipher.update(data), cipher.final()]);
     const tag = cipher.getAuthTag();
+    console.log(`Encrypted data: ${JSON.stringify({ iv, ciphertext, tag })}`);
     return { iv, ciphertext, tag };
   }
 

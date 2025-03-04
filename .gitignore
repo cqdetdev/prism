@@ -27,3 +27,5 @@ prism-*.tar
 /elixir_ls/
 
 /config/config.exs
+
+/client/php/vendor

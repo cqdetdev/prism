@@ -54,17 +54,17 @@ defmodule Net.Server do
         end
         {:noreply, state}
 
-      {:error, :invalid_key_size} ->
-        Logger.warning("Received packet with invalid key size from #{addr}")
+      {:error, :invalid_key_size, size} ->
+        Logger.warning("Received packet with invalid key size (#{size}) from #{addr} (#{inspect buffer})")
         {:noreply, state}
       {:error, :decryption_failed} ->
-        Logger.warning("Decryption failed for packet from #{addr}")
+        Logger.warning("Decryption failed for packet from #{addr} (#{inspect buffer})")
         {:noreply, state}
-      {:error, :invalid_checksum} ->
-        Logger.warning("Invalid checksum for packet from #{addr}")
+      {:error, :invalid_checksum, expected, received} ->
+        Logger.warning("Invalid checksum for packet from #{addr} (Exp: #{inspect expected} | Recv: #{inspect received})")
         {:noreply, state}
       {:error, :invalid_packet_format} ->
-        Logger.warning("Invalid packet format from #{addr}")
+        Logger.warning("Invalid packet format from #{addr} (#{inspect buffer})")
         {:noreply, state}
     end
   end
