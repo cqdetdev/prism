@@ -13,96 +13,147 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const IV_LENGTH = 12
+const TAG_LENGTH = 16
+
+const (
+	DATA = iota + 1
+	ACK
+	NACK
+)
+
 type Prism struct {
 	host        string
 	port        int
 	conn        net.Conn
 	pendingAcks sync.Map
+
+	sec *security
 }
 
-func NewPrism(host string, port int) *Prism {
+func NewPrism(host string, port int, key string) *Prism {
 	return &Prism{
 		host: host,
 		port: port,
+		sec:  newSecurity(key),
 	}
 }
 
-func (o *Prism) Start() error {
+func (p *Prism) Start() error {
 	conn, err := net.Dial("udp", "127.0.0.1:6969")
 	if err != nil {
 		return err
 	}
-	o.conn = conn
+	p.conn = conn
 
-	go o.listen()
+	go p.listen()
 	return nil
 }
 
-func (o *Prism) listen() {
+func (p *Prism) listen() {
 	buffer := make([]byte, 1024)
 	for {
-		n, err := o.conn.Read(buffer)
+		n, err := p.conn.Read(buffer)
 		if err != nil {
 			fmt.Println("Error reading from UDP:", err)
 			continue
 		}
 
-		if n < 5 {
-			fmt.Println("Received too short packet")
+		if n < IV_LENGTH+TAG_LENGTH+9 {
+			if buffer[0] == ACK {
+				seq := binary.BigEndian.Uint32(buffer[1:5])
+				p.handleAckPacket(seq)
+			}
 			continue
 		}
 
-		buffer = buffer[:n]
+		iv := buffer[:IV_LENGTH]
+		ciphertext := buffer[IV_LENGTH : n-TAG_LENGTH]
+		tag := buffer[n-TAG_LENGTH : n]
 
-		typeID := buffer[0]
-		seqNum := binary.BigEndian.Uint32(buffer[1:5])
+		if len(iv) != IV_LENGTH || len(tag) != TAG_LENGTH {
+			fmt.Println("Invalid IV or tag length")
+			continue
+		}
+
+		dec, err := p.sec.decrypt(iv, ciphertext, tag)
+		if err != nil {
+			fmt.Println("Failed to decrypt data packet", err)
+			continue
+		}
+
+		typeID := dec[0]
+		seq := binary.BigEndian.Uint32(dec[1:5])
 
 		switch typeID {
 		case 1:
-			o.handleDataPacket(buffer[5:n], seqNum)
-		case 2:
-			o.handleAckPacket(seqNum)
+			p.handleDataPacket(dec, seq)
 		default:
 			fmt.Println("Unknown packet type received")
 		}
 	}
 }
 
-func (o *Prism) handleDataPacket(data []byte, seqNum uint32) {
-	fmt.Printf("Received Data Packet (seqNum: %d, data: %x)\n", seqNum, data)
+func (p *Prism) handleDataPacket(data []byte, seq uint32) {
+	seq = binary.BigEndian.Uint32(data[1:5])
+	checksum := binary.BigEndian.Uint32(data[5:9])
+
+	var pk DataPacket
+	if err := proto.Unmarshal(data[9:], &pk); err != nil {
+		fmt.Println("Failed to unmarshal data packet:", err)
+		return
+	}
+
+	if crc32.ChecksumIEEE(data[9:]) != checksum {
+		fmt.Println("Checksum mismatch, dropping packet")
+		return
+	}
+
+	switch pk.Type {
+	case 3:
+		fmt.Println("Received AuthResponse for seq:", seq)
+		ar := pk.GetAuthResponse()
+		fmt.Println("AuthResponse:", ar)
+	default:
+		fmt.Println("Unknown packet type received")
+	}
+
 	ack := make([]byte, 5)
 	ack[0] = 2
-	binary.BigEndian.PutUint32(ack[1:], seqNum)
-	o.conn.Write(ack)
+	binary.BigEndian.PutUint32(ack[1:], seq)
+	p.conn.Write(ack)
 }
 
-func (o *Prism) handleAckPacket(seqNum uint32) {
-	if ch, ok := o.pendingAcks.Load(seqNum); ok {
+func (p *Prism) handleAckPacket(seq uint32) {
+	if ch, ok := p.pendingAcks.Load(seq); ok {
 		close(ch.(chan struct{}))
-		o.pendingAcks.Delete(seqNum)
-		fmt.Printf("ACK confirmed, removed seqNum %d from pending list\n", seqNum)
+		p.pendingAcks.Delete(seq)
+		fmt.Printf("ACK confirmed, removed seq %d from pending list\n", seq)
 	} else {
-		fmt.Printf("Received ACK for unknown seqNum: %d\n", seqNum)
+		fmt.Printf("Received ACK for unknown seq: %d\n", seq)
 	}
 }
 
-func (o *Prism) Send(data []byte, requestType int) error {
-	seqNum := rand.Uint32()
+func (p *Prism) Send(data []byte, requestType int) error {
+	iv, ciphertext, tag := p.sec.encrypt(data)
+	seq := rand.Uint32()
 	header := make([]byte, 9)
 	header[0] = byte(requestType)
-	binary.BigEndian.PutUint32(header[1:], seqNum)
+	binary.BigEndian.PutUint32(header[1:], seq)
 
 	combined := append(header, data...)
 	checksum := crc32.ChecksumIEEE(combined)
 	binary.BigEndian.PutUint32(header[5:], checksum)
 
-	packet := append(header, data...)
+	packet := append(header, iv...)
+	packet = append(packet, ciphertext...)
+	packet = append(packet, tag...)
 
 	ackChan := make(chan struct{})
-	o.pendingAcks.Store(seqNum, ackChan)
+	p.pendingAcks.Store(seq, ackChan)
 
-	if _, err := o.conn.Write(packet); err != nil {
-		o.pendingAcks.Delete(seqNum)
+	if _, err := p.conn.Write(packet); err != nil {
+		p.pendingAcks.Delete(seq)
 		return err
 	}
 
@@ -110,19 +161,20 @@ func (o *Prism) Send(data []byte, requestType int) error {
 	case <-ackChan:
 		return nil
 	case <-time.After(5 * time.Second):
-		o.pendingAcks.Delete(seqNum)
-		return errors.New(fmt.Sprintf("ACK not received for seqNum: %d", seqNum))
+		p.pendingAcks.Delete(seq)
+		return errors.New(fmt.Sprintf("ACK not received for seq: %d", seq))
 	}
 }
 
 const (
 	ADDR = "127.0.0.1"
 	PORT = 6969
+	KEY  = "secret-auth-key-123============="
 )
 
 func main() {
-	Prism := NewPrism(ADDR, PORT)
-	if err := Prism.Start(); err != nil {
+	prism := NewPrism(ADDR, PORT, KEY)
+	if err := prism.Start(); err != nil {
 		fmt.Println("Error starting UDP client:", err)
 		return
 	}
@@ -136,7 +188,7 @@ func main() {
 		panic(err)
 	}
 
-	_, err = Prism.conn.Write(rawLogin)
+	err = prism.Send(rawLogin, DATA)
 	if err != nil {
 		fmt.Println("Failed to send login:", err)
 	}
@@ -158,7 +210,7 @@ func main() {
 		panic(err)
 	}
 
-	_, err = Prism.conn.Write(rawData)
+	err = prism.Send(rawData, DATA)
 	if err != nil {
 		fmt.Println("Failed to send data packet:", err)
 	}
