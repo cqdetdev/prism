@@ -1,15 +1,32 @@
-# example
+# Prism: Go Client
 
-To install dependencies:
+Here is an example on how to use Prism via the built-in Typescript/Javascript client:
 
-```bash
-bun install
+> **NOTE**: You must use Bun to run Prism. In the future, Prism will be made to be runtime agnostic
+
+```ts
+const prism = new Prism("127.0.0.1", 6969, "secret-auth-key-123=============");
+await prism.start();
+
+await prism.send(
+    LoginRequest.encode({
+        service: "default_service",
+        token: "default_token",
+    }).finish(),
+    PacketType.DATA,
+);
+
+await prism.send(
+    DataPacket.encode({
+        type: 4,
+        update: new UpdateRequest({
+            name: "test",
+            value: "1",
+            type: UpdateType.KILLS,
+            persistRedis: true,
+        }),
+    }).finish(),
+    PacketType.DATA,
+);
+
 ```
-
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.2.2. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.

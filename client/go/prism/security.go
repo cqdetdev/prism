@@ -1,4 +1,4 @@
-package main
+package prism
 
 import (
 	"crypto/aes"

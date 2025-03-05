@@ -1,4 +1,4 @@
-package main
+package prism
 
 import (
 	"encoding/binary"
@@ -164,56 +164,4 @@ func (p *Prism) Send(data []byte, requestType int) error {
 		p.pendingAcks.Delete(seq)
 		return errors.New(fmt.Sprintf("ACK not received for seq: %d", seq))
 	}
-}
-
-const (
-	ADDR = "127.0.0.1"
-	PORT = 6969
-	KEY  = "secret-auth-key-123============="
-)
-
-func main() {
-	prism := NewPrism(ADDR, PORT, KEY)
-	if err := prism.Start(); err != nil {
-		fmt.Println("Error starting UDP client:", err)
-		return
-	}
-	login := Login{
-		Service: "default_service",
-		Token:   "default_token",
-	}
-
-	rawLogin, err := proto.Marshal(&login)
-	if err != nil {
-		panic(err)
-	}
-
-	err = prism.Send(rawLogin, DATA)
-	if err != nil {
-		fmt.Println("Failed to send login:", err)
-	}
-
-	data := DataPacket{
-		Type: 4,
-		Payload: &DataPacket_Update{
-			Update: &Update{
-				Name:         "test-name",
-				Value:        "10",
-				Type:         "KILLS",
-				PersistCache: true,
-			},
-		},
-	}
-
-	rawData, err := proto.Marshal(&data)
-	if err != nil {
-		panic(err)
-	}
-
-	err = prism.Send(rawData, DATA)
-	if err != nil {
-		fmt.Println("Failed to send data packet:", err)
-	}
-
-	select {}
 }
