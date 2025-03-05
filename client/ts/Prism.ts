@@ -1,4 +1,5 @@
 import type { udp } from "bun";
+import { createSocket, Socket, type RemoteInfo } from "dgram";
 import DataPacket from "./proto/DataPacket";
 import { PacketType } from "./proto/Types";
 import { createDecipheriv, createCipheriv, randomBytes } from "crypto";
@@ -7,8 +8,8 @@ const IV_LENGTH = 12;
 const TAG_LENGTH = 16;
 
 export default class Prism {
+  private socket: Socket;
   private pendingAcks: Map<number, [() => void, () => void]>;
-  private socket!: udp.Socket<"buffer">;
 
   private host: string;
   private port: number;
@@ -18,29 +19,29 @@ export default class Prism {
   private closed: boolean;
 
   public constructor(host: string, port: number, key: string) {
+    this.socket = createSocket("udp4");
     this.pendingAcks = new Map();
+
     this.host = host;
     this.port = port;
+
     this.key = Buffer.from(key);
+
     this.closed = true;
   }
 
-  public async start() {
+  public start() {
     this.closed = false;
-    this.socket = await Bun.udpSocket({
-      connect: {
-        port: this.port,
-        hostname: this.host,
-      },
-      socket: {
-        data: this.onData.bind(this),
-      },
-    });
+
+    this.socket.on("connect", ()  => this.closed = false);
+    this.socket.on("close", () => this.closed = true);
+    this.socket.on("message", (msg) => this.onMessage(this.socket, msg));
+    this.socket.on("error", (err) => console.error(err));
   }
 
-  private onData(
-    sock: udp.Socket<"buffer">,
-    data: Buffer<ArrayBufferLike>
+  private onMessage(
+    sock: Socket,
+    data: Buffer<ArrayBufferLike>,
   ): void | Promise<void> {
     const raw = Buffer.from(data);
     if (raw.length < IV_LENGTH + TAG_LENGTH + 9) {
@@ -83,8 +84,7 @@ export default class Prism {
 
       const packet = Buffer.concat([header, iv, ciphertext, tag]);
       this.pendingAcks.set(seq, [resolve, reject]);
-      // @ts-expect-error
-      this.socket.send(packet);
+      this.socket.send(packet, this.port, this.host);
 
       setTimeout(() => {
         if (this.pendingAcks.has(seq)) {
@@ -126,7 +126,7 @@ export default class Prism {
     }
   }
 
-  private handleDataPacket(data: Buffer, sock: udp.Socket<"buffer">) {
+  private handleDataPacket(data: Buffer, sock: Socket) {
     const seq = data.readUInt32BE(1);
     const checksum = data.readUInt32BE(5);
     
@@ -142,8 +142,7 @@ export default class Prism {
     const ack = Buffer.alloc(5);
     ack.writeUInt8(PacketType.ACK, 0);
     ack.writeUInt32BE(seq, 1);
-    // @ts-expect-error
-    sock.send(ack);
+    sock.send(ack, this.port, this.host);
 
     switch (packet.type) {
       case 3:

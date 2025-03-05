@@ -2,8 +2,6 @@
 
 Here is an example on how to use Prism via the built-in Typescript/Javascript client:
 
-> **NOTE**: You must use Bun to run Prism. In the future, Prism will be made to be runtime agnostic
-
 ```ts
 const prism = new Prism("127.0.0.1", 6969, "secret-auth-key-123=============");
 await prism.start();

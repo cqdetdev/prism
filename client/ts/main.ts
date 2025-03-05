@@ -5,7 +5,7 @@ import UpdateRequest from "./proto/requests/UpdateRequest";
 import { PacketType, UpdateType } from "./proto/Types";
 
 const prism = new Prism("127.0.0.1", 6969, "secret-auth-key-123=============");
-await prism.start();
+prism.start();
 
 await prism.send(
     LoginRequest.encode({
