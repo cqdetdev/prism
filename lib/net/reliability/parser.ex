@@ -13,13 +13,16 @@ defmodule Net.Reliability.Parser do
     case Security.decrypt(iv, ciphertext, tag) do
       {:ok, dec} ->
         check = <<1::8, seq_num::32, 0, 0, 0, 0, dec::binary>>
+
         if valid_checksum?(check, checksum) do
           {:data, seq_num, dec, checksum}
         else
           {:error, :invalid_checksum, :erlang.crc32(check), checksum}
         end
+
       {:error, :invalid_key_size, size} ->
         {:error, :invalid_key_size, size}
+
       {:error, :decryption_failed} ->
         {:error, :decryption_failed}
     end
@@ -33,6 +36,7 @@ defmodule Net.Reliability.Parser do
     {:error, :invalid_packet_format}
   end
 
+  @spec try_decode(any(), any(), any()) :: :error | {:ok, any()}
   def try_decode(func, data, addr) do
     try do
       {:ok, func.(data)}

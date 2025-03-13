@@ -1,7 +1,7 @@
 import Prism from "./Prism";
 import DataPacket from "./proto/DataPacket";
+import DataRequest from "./proto/requests/DataRequest";
 import LoginRequest from "./proto/requests/LoginRequest";
-import UpdateRequest from "./proto/requests/UpdateRequest";
 import { PacketType, UpdateType } from "./proto/Types";
 
 const prism = new Prism("127.0.0.1", 6969, "secret-auth-key-123=============");
@@ -17,12 +17,12 @@ await prism.send(
 
 await prism.send(
     DataPacket.encode({
-        type: 4,
-        update: new UpdateRequest({
-            name: "test",
-            value: "1",
-            type: UpdateType.KILLS,
-            persistRedis: true,
+        type: 5,
+        request: new DataRequest({
+            type: 1,
+            payload: JSON.stringify({
+                name: "Test"
+            })
         }),
     }).finish(),
     PacketType.DATA,

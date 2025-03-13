@@ -32,8 +32,10 @@ defmodule Net.Reliability.Manager do
   @impl true
   def init(_) do
     state = %{
-      pending_packets: %{},    # %{addr => %{seq_num => {data, dest, sent_time, retries}}}
-      processed_packets: %{}   # %{addr => MapSet<seq_num>}
+      # %{addr => %{seq_num => {data, dest, sent_time, retries}}}
+      pending_packets: %{},
+      # %{addr => MapSet<seq_num>}
+      processed_packets: %{}
     }
 
     schedule_retry_check()
@@ -46,7 +48,11 @@ defmodule Net.Reliability.Manager do
 
     updated_pending =
       state.pending_packets
-      |> Map.update(addr, %{seq_num => {data, dest, now, 0}}, &Map.put(&1, seq_num, {data, dest, now, 0}))
+      |> Map.update(
+        addr,
+        %{seq_num => {data, dest, now, 0}},
+        &Map.put(&1, seq_num, {data, dest, now, 0})
+      )
 
     {:noreply, %{state | pending_packets: updated_pending}}
   end
@@ -104,7 +110,8 @@ defmodule Net.Reliability.Manager do
     updated_pending =
       Enum.reduce(state.pending_packets, %{}, fn {addr, addr_map}, acc ->
         updated_addr_map =
-          Enum.reduce(addr_map, %{}, fn {seq_num, {data, {ip, port} = dest, sent_time, retries}}, acc_map ->
+          Enum.reduce(addr_map, %{}, fn {seq_num, {data, {ip, port} = dest, sent_time, retries}},
+                                        acc_map ->
             if now - sent_time > @retry_interval do
               if retries < @max_retries do
                 packet = Net.Reliability.Packet.build_packet_with_seq(data, seq_num)
@@ -116,7 +123,10 @@ defmodule Net.Reliability.Manager do
                 Logger.debug("Retrying packet #{seq_num} to #{addr}, attempt #{retries + 1}")
                 Map.put(acc_map, seq_num, {data, dest, now, retries + 1})
               else
-                Logger.warning("Packet #{seq_num} to #{addr} timed out after #{@max_retries} retries")
+                Logger.warning(
+                  "Packet #{seq_num} to #{addr} timed out after #{@max_retries} retries"
+                )
+
                 acc_map
               end
             else

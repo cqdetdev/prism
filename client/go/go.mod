@@ -1,6 +1,6 @@
 module github.com/prism/prism
 
-go 1.21.12
+go 1.24.1
 
 require (
 	github.com/golang/protobuf v1.5.4 // indirect

@@ -33,6 +33,7 @@ defmodule Net.Cluster do
     Node.list()
     |> Enum.each(fn node ->
       Logger.debug("Sending update to #{node}")
+
       Node.spawn_link(node, fn ->
         GenServer.call({:global, node}, {:update, data})
       end)

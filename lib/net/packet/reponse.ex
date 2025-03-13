@@ -1,4 +1,4 @@
-defmodule Net.Packet.AuthResponse do
+defmodule Net.Packet.Response do
   use Protobuf, protoc_gen_elixir_version: "0.10.0", syntax: :proto3
 
   @ok "OK"
@@ -19,6 +19,6 @@ defmodule Net.Packet.AuthResponse do
   def success, do: @success
   def failure, do: @failure
 
-  field :status, 1, type: :int32
-  field :message, 2, type: :string
+  field(:status, 1, type: :int32)
+  field(:message, 2, type: :string)
 end

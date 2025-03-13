@@ -32,6 +32,6 @@ defmodule Prism do
   defp start_server(_), do: []
 
   defp register_services do
-    Net.Service.Registry.register_service("default_service", "default_token", [4])
+    Net.Service.Registry.register_service("default_service", "default_token", [4, 5])
   end
 end
