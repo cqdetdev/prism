@@ -1,5 +1,9 @@
 defmodule Net.Packet.Request do
   use Protobuf, protoc_gen_elixir_version: "0.10.0", syntax: :proto3
+  @behaviour Net.Packet.Behavior
+
+  @impl true
+  def id(), do: 5
 
   @create_user 1
   @get_all_users 2

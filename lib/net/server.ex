@@ -99,7 +99,7 @@ defmodule Net.Server do
   @impl true
   def handle_call({:update, %{from: from, data: data}}, _from, state) do
     Logger.debug("Background Update (from: #{from}):")
-    IO.inspect(data)
+    IO.inspect data
     {:reply, :ok, state}
   end
 
@@ -154,7 +154,7 @@ defmodule Net.Server do
     end
   end
 
-  defp handle_packet_sequence(_socket, ip, port, data) do
+  defp handle_packet_sequence(socket, ip, port, data) do
     addr = format_address(ip, port)
 
     with {:ok, packet} <- Parser.try_decode(&Data.decode/1, data, addr) do
@@ -162,45 +162,29 @@ defmodule Net.Server do
       conn = ConnManager.get_connection(addr)
 
       if Registry.is_packet_allowed?(conn.service, type) do
-        Logger.debug(
-          "Packet successfully received from #{addr} with type #{type} and payload #{inspect(payload)}"
-        )
+        Logger.debug("Packet received from #{addr} with type #{type}")
 
-        case {type, payload} do
-          {5, {:request, pk}} ->
-            Logger.debug("Request packet received from #{format_address(ip, port)}")
-
-          # {:ok, data} = JSON.decode(pk)
-
-          # Users.create_user(%{
-          #   username: data.name,
-          #   xuid: "123"
-          # })
-
-          {4, {:update, pk}} ->
-            Logger.debug("Update packet received from #{format_address(ip, port)}")
-            Cluster.broadcast_update(%{from: Node.self(), data: pk})
-
-          _ ->
-            Logger.debug("Unknown packet type #{type} with payload #{inspect(payload)}")
+        case Net.Service.Dispatch.get_handler(type) do
+          nil ->
+            Logger.debug("No handler registered for packet type #{type}")
+          handler_fun ->
+            # The registered closure is responsible for decoding and handling.
+            handler_fun.(conn, payload)
         end
       else
         service = Registry.get_service(conn.service)
 
         if service == nil do
-          Logger.debug(
-            "Packet received from #{addr} with type #{type} from invalid service (#{conn.service})"
-          )
+          Logger.debug("Packet received from #{addr} with type #{type} from invalid service (#{conn.service})")
         else
-          Logger.debug(
-            "Packet received from #{addr} with type #{type} is not valid for the service (#{conn.service}) [#{inspect(service.valid_packets)}]."
-          )
+          Logger.debug("Packet received from #{addr} with type #{type} is not valid for the service (#{conn.service}) [#{inspect(service.valid_packets)}].")
         end
       end
     else
       _ -> Logger.debug("Invalid packet from #{addr}")
     end
   end
+
 
   defp send_ack(socket, ip, port, seq) do
     ack_packet = Packet.build_ack_packet(seq)
@@ -218,9 +202,6 @@ defmodule Net.Server do
     send =
       if encrypt do
         {iv, ciphertext, tag} = Security.encrypt(bin)
-        IO.inspect(iv)
-        IO.inspect(ciphertext)
-        IO.inspect(tag)
         <<iv::binary, ciphertext::binary, tag::binary>>
       else
         bin

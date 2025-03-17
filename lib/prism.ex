@@ -1,4 +1,5 @@
 defmodule Prism do
+  require Logger
   use Application
 
   def start(_type, _args) do
@@ -6,8 +7,9 @@ defmodule Prism do
     children = [
       Net.Service.Registry,
       Net.Reliability.Manager,
+      Net.Service.Dispatch,
       Net.Conn.Manager,
-      Data.Repo,
+      # Data.Repo,
       {Redix, name: :redix},
     ] ++ start_server(region)
 
@@ -15,6 +17,7 @@ defmodule Prism do
     {:ok, supervisor} = Supervisor.start_link(children, opts)
 
     register_services()
+    register_dispatches()
 
     {:ok, supervisor}
   end
@@ -33,5 +36,11 @@ defmodule Prism do
 
   defp register_services do
     Net.Service.Registry.register_service("default_service", "default_token", [4, 5])
+  end
+
+  defp register_dispatches do
+    Net.Service.Dispatch.register_handler(Net.Packet.Request.id, fn conn, {:request, payload} ->
+      Logger.debug("Handling create user for #{conn.addr} with decoded payload: #{inspect(payload.payload)}")
+    end)
   end
 end
