@@ -27,6 +27,7 @@ so that we are able to limit latency but also have some way to handle synchroniz
 - `Net.Cluster` - functions to connect to other nodes and broadcast updates (via OTP)
 - `Net.Reliablity` - enforces reliablity on all packets as well as handling retries
 - `Net.Security` - utilizes AES to encrypt and decrypt incoming packets
+- `Net.Dispatch` - performs/stores all packet handlers (based on an ID specified)
 
 
 ## Current Status
@@ -37,7 +38,8 @@ so that we are able to limit latency but also have some way to handle synchroniz
 - [x] Finish packet layer
 - [x] Add service authentication
 - [x] Implemented security via AES encryption
-- [ ] Add database connection and redis connection
+- [x] Add database connection
+- [ ] Add redis connection
 - [x] Add proper regional handling
 - [ ] Find a way to combat synchronization issues (few will arise because of Cluster implementation)
 - [x] Add better logging

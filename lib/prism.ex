@@ -9,7 +9,7 @@ defmodule Prism do
       Net.Reliability.Manager,
       Net.Service.Dispatch,
       Net.Conn.Manager,
-      # Data.Repo,
+      Data.Repo,
       {Redix, name: :redix},
     ] ++ start_server(region)
 
