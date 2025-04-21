@@ -1,8 +1,10 @@
-<img height="128" alt="image" src="./assets/logo.jpg" align="right">
-
 # Prism
 
 A simple, fast, and distributed data broker for clustered server use.
+
+<div style="text-align: right;">
+  <img height="128" alt="image" src="./assets/logo.jpg">
+</div>
 
 ## Purpose
 
@@ -25,10 +27,9 @@ so that we are able to limit latency but also have some way to handle synchroniz
 - `Net.Conn` - connection struct to store connection info
 - `Net.Packet` - Protobuf packets to handle all the different packet types
 - `Net.Cluster` - functions to connect to other nodes and broadcast updates (via OTP)
-- `Net.Reliablity` - enforces reliablity on all packets as well as handling retries
+- `Net.Reliablity` - enforces reliability on all packets as well as handling retries
 - `Net.Security` - utilizes AES to encrypt and decrypt incoming packets
 - `Net.Dispatch` - performs/stores all packet handlers (based on an ID specified)
-
 
 ## Current Status
 
