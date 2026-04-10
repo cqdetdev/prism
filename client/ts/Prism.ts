@@ -1,4 +1,3 @@
-import type { udp } from "bun";
 import { createSocket, Socket, type RemoteInfo } from "dgram";
 import DataPacket from "./proto/DataPacket";
 import { PacketType } from "./proto/Types";
@@ -9,7 +8,7 @@ const TAG_LENGTH = 16;
 
 export default class Prism {
   private socket: Socket;
-  private pendingAcks: Map<number, [() => void, () => void]>;
+  private pendingAcks: Map<number, [() => void, (reason?: unknown) => void]>;
 
   private host: string;
   private port: number;
@@ -35,23 +34,47 @@ export default class Prism {
 
     this.socket.on("connect", ()  => this.closed = false);
     this.socket.on("close", () => this.closed = true);
-    this.socket.on("message", (msg) => this.onMessage(this.socket, msg));
+    this.socket.on("message", (msg, rinfo) => this.onMessage(msg, rinfo));
     this.socket.on("error", (err) => console.error(err));
   }
 
   private onMessage(
-    sock: Socket,
     data: Buffer<ArrayBufferLike>,
+    rinfo: RemoteInfo,
   ): void | Promise<void> {
     const raw = Buffer.from(data);
-    if (raw.length < IV_LENGTH + TAG_LENGTH + 9) {
-      if (raw[0] == PacketType.ACK) {
-        return this.handleAckPacket(raw);
-      }
+
+    if (raw.length < 1) {
+      console.error("Received empty UDP packet");
+      return;
     }
 
-    const iv = raw.subarray(0, IV_LENGTH); 
-    const ciphertext = raw.subarray(IV_LENGTH, raw.length - TAG_LENGTH);
+    const packetType = raw.readUInt8(0);
+
+    if (packetType === PacketType.ACK) {
+      if (raw.length !== 5) {
+        console.error(`Invalid ACK packet length: ${raw.length}`);
+        return;
+      }
+
+      this.handleAckPacket(raw);
+      return;
+    }
+
+    if (packetType !== PacketType.DATA) {
+      console.error(`Unknown Prism packet type: ${packetType}`);
+      return;
+    }
+
+    if (raw.length < 9 + IV_LENGTH + TAG_LENGTH) {
+      console.error(`Reliable packet too short: ${raw.length}`);
+      return;
+    }
+
+    const seq = raw.readUInt32BE(1);
+    const checksum = raw.readUInt32BE(5);
+    const iv = raw.subarray(9, 9 + IV_LENGTH);
+    const ciphertext = raw.subarray(9 + IV_LENGTH, raw.length - TAG_LENGTH);
     const tag = raw.subarray(raw.length - TAG_LENGTH);
 
     if (iv.length !== IV_LENGTH || tag.length !== TAG_LENGTH) {
@@ -65,9 +88,12 @@ export default class Prism {
       return;
     }
 
-    if (dec[0] == PacketType.DATA) {
-      return this.handleDataPacket(dec, sock);
+    if (!this.isValidChecksum(seq, checksum, dec)) {
+      console.error(`Invalid checksum for reliable packet ${seq}`);
+      return;
     }
+
+    return this.handleDataPacket(dec, seq, checksum, rinfo);
   }
 
   public async send(data: Uint8Array, requestType: number): Promise<void> {
@@ -88,12 +114,9 @@ export default class Prism {
 
       setTimeout(() => {
         if (this.pendingAcks.has(seq)) {
+          const [, reject] = this.pendingAcks.get(seq)!;
           this.pendingAcks.delete(seq);
-          if (!this.closed) {
-            console.error(`ACK not received for seqNum: ${seq}`);
-          } else {
-            console.error("Socket closed, not sending reject");
-          }
+          reject(new Error(`ACK not received for seqNum: ${seq}`));
         }
       }, 5000);
     });
@@ -126,27 +149,38 @@ export default class Prism {
     }
   }
 
-  private handleDataPacket(data: Buffer, sock: Socket) {
-    const seq = data.readUInt32BE(1);
-    const checksum = data.readUInt32BE(5);
-    
-    const packet = DataPacket.decode(Buffer.from(data));
-    console.log(
-      `Received Data Packet (seqNum: ${seq}, checksum: ${checksum}, data: ${JSON.stringify(
-        packet.toJSON(),
-        null,
-        4
-      )})`
-    );
+  private isValidChecksum(seq: number, checksum: number, data: Buffer): boolean {
+    const header = Buffer.alloc(9);
+    header.writeUInt8(PacketType.DATA, 0);
+    header.writeUInt32BE(seq, 1);
 
+    const calculated = Bun.hash.crc32(Buffer.concat([header, data])) >>> 0;
+    return calculated === checksum;
+  }
+
+  private handleDataPacket(data: Buffer, seq: number, checksum: number, rinfo: RemoteInfo) {
     const ack = Buffer.alloc(5);
     ack.writeUInt8(PacketType.ACK, 0);
     ack.writeUInt32BE(seq, 1);
-    sock.send(ack, this.port, this.host);
+    this.socket.send(ack, rinfo.port, rinfo.address);
+
+    let packet: DataPacket;
+
+    try {
+      packet = DataPacket.decode(Buffer.from(data));
+    } catch (error) {
+      console.error("Failed to decode Prism data packet", error);
+      return;
+    }
+
+    console.log(`Received Data Packet (seqNum: ${seq}, checksum: ${checksum}, type: ${packet.type})`);
 
     switch (packet.type) {
       case 3:
         this.handleAuthResponse(packet);
+        break;
+      case 6:
+        this.handleServiceResponse(packet);
         break;
     }
   }
@@ -166,10 +200,26 @@ export default class Prism {
 
   private handleAuthResponse(packet: DataPacket) {
     const authResponse = packet.authResponse!;
-    if (authResponse.status === 1) {
-      console.log("Auth failed: ", authResponse.message);
+    const status = authResponse.status ?? 0;
+    const message = authResponse.message ?? "";
+
+    if (status === 1) {
+      console.log("Auth failed: ", message);
       this.socket.close();
     }
+  }
+
+  private handleServiceResponse(packet: DataPacket) {
+    const response = packet.serviceResponse!;
+    const status = response.status ?? 0;
+    const message = response.message ?? "";
+    const payload = response.payload ?? "";
+
+    console.log("Service response:", {
+      status,
+      message,
+      payload,
+    });
   }
 
   public getHost(): string {

@@ -38,13 +38,11 @@ defmodule Net.Reliability.Parser do
 
   @spec try_decode(any(), any(), any()) :: :error | {:ok, any()}
   def try_decode(func, data, addr) do
-    try do
-      {:ok, func.(data)}
-    rescue
-      _ ->
-        Logger.debug("Invalid packet from #{addr}")
-        :error
-    end
+    {:ok, func.(data)}
+  rescue
+    _ ->
+      Logger.debug("Invalid packet from #{addr}")
+      :error
   end
 
   defp valid_checksum?(data, checksum) do

@@ -10,12 +10,14 @@ defmodule Net.Packet.Response do
   @invalid_service "INVALID_SERVICE"
   @login_required "LOGIN_REQUIRED"
   @invalid_packet "INVALID_PACKET"
+  @rate_limited "RATE_LIMITED"
 
   def ok, do: @ok
   def invalid_credentials, do: @invalid_credentials
   def invalid_service, do: @invalid_service
   def login_required, do: @login_required
   def invalid_packet, do: @invalid_packet
+  def rate_limited, do: @rate_limited
 
   @success 2
   @failure 1

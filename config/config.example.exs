@@ -19,3 +19,18 @@ config :prism, :regions, %{
 }
 
 config :prism, :key, "secret-auth-key-123============="
+
+config :prism,
+  start_udp: true,
+  start_database: true,
+  start_redix: true,
+  start_cluster: true
+
+config :prism, :metrics_reporter, true
+config :prism, :services, [Prism.Service.Default, Prism.Examples.PracticeService]
+config :prism, :handler_timeout_ms, 5_000
+config :prism, :auth_rate_limit, max_attempts: 10, window_ms: 60_000
+config :prism, :max_pending_packets, 10_000
+config :prism, :max_pending_per_address, 1_000
+
+import_config "#{config_env()}.exs"

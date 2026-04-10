@@ -3,29 +3,55 @@ defmodule Net.Service.Registry do
 
   require Logger
 
+  @table :prism_services
+
   def start_link(_) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
   @impl true
   def init(_args) do
+    _ =
+      :ets.new(@table, [
+        :named_table,
+        :public,
+        :set,
+        read_concurrency: true,
+        write_concurrency: true
+      ])
+
     {:ok, %{}}
   end
 
-  def register_service(name, token, packet_ids) do
-    GenServer.call(__MODULE__, {:register, name, token, packet_ids})
+  def register_service(name, token, packet_ids, opts \\ []) do
+    GenServer.call(__MODULE__, {:register, name, token, packet_ids, opts})
   end
 
   def get_service(name) do
-    GenServer.call(__MODULE__, {:get, name})
+    case :ets.lookup(@table, name) do
+      [{^name, service}] -> service
+      [] -> nil
+    end
   end
 
   def verify_service(name, token) do
-    GenServer.call(__MODULE__, {:verify, name, token})
+    case get_service(name) do
+      nil ->
+        {:error, :invalid_service}
+
+      %{token: ^token} ->
+        :ok
+
+      _ ->
+        {:error, :invalid_credentials}
+    end
   end
 
   def is_packet_allowed?(service_name, packet_id) do
-    GenServer.call(__MODULE__, {:is_packet_allowed, service_name, packet_id})
+    case get_service(service_name) do
+      %{valid_packets: valid_packets} -> packet_id in valid_packets
+      _ -> false
+    end
   end
 
   def all do
@@ -33,7 +59,7 @@ defmodule Net.Service.Registry do
   end
 
   @impl true
-  def handle_call({:register, name, token, packet_ids}, _from, state) do
+  def handle_call({:register, name, token, packet_ids, opts}, _from, state) do
     if Map.has_key?(state, name) do
       {:reply, {:error, :already_registered}, state}
     else
@@ -41,7 +67,9 @@ defmodule Net.Service.Registry do
         "Service '#{name}' registered successfully with allowed packets: #{inspect(packet_ids)}"
       )
 
-      new_state = Map.put(state, name, %{token: token, valid_packets: packet_ids})
+      service = %{token: token, valid_packets: packet_ids, options: Map.new(opts)}
+      true = :ets.insert(@table, {name, service})
+      new_state = Map.put(state, name, service)
       {:reply, :ok, new_state}
     end
   end

@@ -30,6 +30,62 @@ so that we are able to limit latency but also have some way to handle synchroniz
 - `Net.Reliablity` - enforces reliability on all packets as well as handling retries
 - `Net.Security` - utilizes AES to encrypt and decrypt incoming packets
 - `Net.Dispatch` - performs/stores all packet handlers (based on an ID specified)
+- `Prism.Metrics.Reporter` - aggregates `:telemetry` events into periodic snapshots
+- `client/ts/loadtest.ts` - UDP load generator for quick perf smoke tests
+
+Docs:
+
+- `docs/performance.md`
+- `docs/slos.md`
+- `docs/service_api.md`
+- `docs/runtime.md`
+- `docs/protocol.md`
+- `docs/minecraft_practice.md`
+
+## Custom Services
+
+Prism now supports first-class service modules. Register your services in config:
+
+```elixir
+config :prism, :services, [
+  Prism.Service.Default,
+  Prism.Examples.PracticeService,
+  MyApp.InventoryService
+]
+```
+
+Example:
+
+```elixir
+defmodule MyApp.InventoryService do
+  use Prism.Service, name: "inventory", token: "secret-token"
+
+  alias Prism.Handler.Context
+
+  handle_request(100, :list_items)
+
+  def list_items(context) do
+    Context.json_reply(context, %{items: [%{sku: "abc", qty: 10}]}, message: "ITEMS_OK")
+  end
+end
+```
+
+## Sample Practice App
+
+Prism includes a runnable sample service for a Minecraft practice server:
+
+- service: `practice_service`
+- token: `practice_token`
+- docs: `docs/minecraft_practice.md`
+- TS demo: `client/ts/practice-demo.ts`
+
+It supports:
+
+- player upsert/profile lookup
+- match result recording
+- elo/wins/kills/streak leaderboards
+- queue-specific ratings
+- session/presence updates
 
 ## Current Status
 

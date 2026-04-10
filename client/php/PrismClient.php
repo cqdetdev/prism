@@ -41,6 +41,7 @@ class PrismClient {
         $this->pendingAcks = [];
 
         $this->socket = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
+        socket_set_option($this->socket, SOL_SOCKET, SO_RCVTIMEO, ["sec" => 0, "usec" => 200000]);
     }
 
     public function loop() {
@@ -48,8 +49,10 @@ class PrismClient {
             $buffer = "";
             $from = "";
             $port = 0;
-            @socket_recvfrom($this->socket, $buffer, 1024, 64, $from, $port);
-            usleep(100000);
+            @socket_recvfrom($this->socket, $buffer, 1024, 0, $from, $port);
+            if ($buffer !== "") {
+                $this->handleIncomingPacket($buffer, $from);
+            }
         }
     }
 
@@ -109,49 +112,57 @@ class PrismClient {
     }
 
     private function waitForAck($seq) {
-        while (true) {
+        $deadline = microtime(true) + 5.0;
+        while (microtime(true) < $deadline) {
             $buffer = "";
             $from = "";
             $port = 0;
 
             $recv = @socket_recvfrom($this->socket, $buffer, 1024, 0, $from, $port);
             if ($recv !== false) {
-                if (strlen($buffer) < IV_LENGTH + TAG_LENGTH + 9) {
-                    $data = unpack("C*", $buffer);
-                    if ($data[1] == PacketType::ACK) {
-                        $this->handleAckPacket($data);
-                        return;
-                    }
-                } else {
-                    $iv = substr($buffer, 0, IV_LENGTH);
-                    $ciphertext = substr($buffer, IV_LENGTH, strlen($buffer) - TAG_LENGTH - IV_LENGTH);
-                    $tag = substr($buffer, strlen($buffer) - TAG_LENGTH);
-
-                    if (strlen($iv) !== IV_LENGTH || strlen($tag) !== TAG_LENGTH) {
-                        echo "Invalid IV or tag length\n";
-                        continue;
-                    }
-
-                    $dec = Security::decryptData($iv, $ciphertext, $tag);
-                    if ($dec === false) {
-                        echo "Failed to decrypt data\n";
-                        continue;
-                    }
-                    $data = unpack("C*", $dec);
-                    if ($data[1] == PacketType::DATA) {
-                        $this->handleDataPacket($data, $from);
-                    }
+                if ($this->handleIncomingPacket($buffer, $from) === $seq) {
+                    return;
                 }
-            } else {
-                usleep(100000);
             }
         }
 
         if (isset($this->pendingAcks[$seq])) {
-            [$resolve, $reject] = $this->pendingAcks[$seq];
+            [, $reject] = $this->pendingAcks[$seq];
             unset($this->pendingAcks[$seq]);
             $reject("No ACK received for seqNum: $seq");
         }
+    }
+
+    private function handleIncomingPacket(string $buffer, string $from): ?int {
+        if (strlen($buffer) < IV_LENGTH + TAG_LENGTH + 9) {
+            $data = unpack("C*", $buffer);
+            if (isset($data[1]) && $data[1] == PacketType::ACK) {
+                return $this->handleAckPacket($data);
+            }
+            return null;
+        }
+
+        $iv = substr($buffer, 0, IV_LENGTH);
+        $ciphertext = substr($buffer, IV_LENGTH, strlen($buffer) - TAG_LENGTH - IV_LENGTH);
+        $tag = substr($buffer, strlen($buffer) - TAG_LENGTH);
+
+        if (strlen($iv) !== IV_LENGTH || strlen($tag) !== TAG_LENGTH) {
+            echo "Invalid IV or tag length\n";
+            return null;
+        }
+
+        $dec = Security::decryptData($iv, $ciphertext, $tag);
+        if ($dec === false) {
+            echo "Failed to decrypt data\n";
+            return null;
+        }
+
+        $data = unpack("C*", $dec);
+        if (isset($data[1]) && $data[1] == PacketType::DATA) {
+            $this->handleDataPacket($data, $from);
+        }
+
+        return null;
     }
 
     private function handleDataPacket($buffer, $from) {
@@ -171,17 +182,20 @@ class PrismClient {
         socket_sendto($this->socket, $ackPacket, strlen($ackPacket), 0, $from, $this->port);
     }
 
-    private function handleAckPacket(array $buffer) {
+    private function handleAckPacket(array $buffer): ?int {
         $toStr = pack("C*", ...$buffer);
         $seq = unpack("N", substr($toStr, 1, 4))[1];
 
         if (isset($this->pendingAcks[$seq])) {
-            [$resolve, $reject] = $this->pendingAcks[$seq];
+            [$resolve, ] = $this->pendingAcks[$seq];
             unset($this->pendingAcks[$seq]);
             $resolve("ACK received for seqNum: $seq");
+            return $seq;
         } else {
             echo "Received ACK for unknown seqNum: $seq\n";
         }
+
+        return null;
     }
 
     public function close() {

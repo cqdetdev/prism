@@ -6,12 +6,16 @@
   "devDependencies": {
     "@types/bun": "latest"
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "loadtest": "bun run loadtest.ts",
+    "practice:demo": "bun run practice-demo.ts"
+  },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
     "crc-32": "^1.2.2",
-    "protobuf.js": "^1.1.2",
     "protobufjs": "^7.4.0"
   }
 }

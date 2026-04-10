@@ -8,4 +8,5 @@ defmodule Net.Packet.Data do
   field(:auth_response, 3, type: Net.Packet.Response, oneof: 2)
   field(:update, 4, type: Net.Packet.Update, oneof: 2)
   field(:request, 5, type: Net.Packet.Request, oneof: 2)
+  field(:service_response, 6, type: Net.Packet.ServiceResponse, oneof: 2)
 end

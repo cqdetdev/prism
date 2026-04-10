@@ -1,11 +1,22 @@
 defmodule Net.Conn.Manager do
   use GenServer
 
+  @table :prism_connections
+
   def start_link(_) do
     GenServer.start_link(__MODULE__, %{connections: %{}}, name: __MODULE__)
   end
 
   def init(opts) do
+    _ =
+      :ets.new(@table, [
+        :named_table,
+        :public,
+        :set,
+        read_concurrency: true,
+        write_concurrency: true
+      ])
+
     {:ok, opts}
   end
 
@@ -18,11 +29,14 @@ defmodule Net.Conn.Manager do
   end
 
   def get_connection(addr) do
-    GenServer.call(__MODULE__, {:get_connection, addr})
+    case :ets.lookup(@table, addr) do
+      [{^addr, conn}] -> conn
+      [] -> nil
+    end
   end
 
   def has_connection?(addr) do
-    GenServer.call(__MODULE__, {:connection?, addr})
+    :ets.member(@table, addr)
   end
 
   def handle_call(:connections, _from, state) do
@@ -30,6 +44,7 @@ defmodule Net.Conn.Manager do
   end
 
   def handle_call({:add_connection, conn}, _from, state) do
+    true = :ets.insert(@table, {conn.addr, conn})
     new_connections = Map.put(state.connections, conn.addr, conn)
     {:reply, new_connections, %{state | connections: new_connections}}
   end
@@ -43,6 +58,7 @@ defmodule Net.Conn.Manager do
   end
 
   def handle_call({:remove_connection, conn}, _from, state) do
+    true = :ets.delete(@table, conn.addr)
     new_connections = Map.delete(state.connections, conn.addr)
     {:reply, new_connections, %{state | connections: new_connections}}
   end

@@ -3,8 +3,11 @@ defmodule Data.Users do
   alias Data.Repo
   import Ecto.Query
 
+  @default_limit 100
+  @max_limit 500
+
   def get_user!(username), do: Repo.get_by!(User, username: username)
-  def all, do: Repo.all(User)
+  def all(opts \\ []), do: User |> paginate(opts) |> Repo.all()
 
   def create_user(attrs \\ %{}) do
     %Data.User{}
@@ -15,35 +18,41 @@ defmodule Data.Users do
     end
   end
 
-  def all_by_kills do
+  def all_by_kills(opts \\ []) do
     query =
       from(u in User,
         order_by: [desc: u.kills]
       )
 
-    Repo.all(query)
+    query
+    |> paginate(opts)
+    |> Repo.all()
   end
 
-  def all_by_deaths do
+  def all_by_deaths(opts \\ []) do
     query =
       from(u in User,
         order_by: [desc: u.deaths]
       )
 
-    Repo.all(query)
+    query
+    |> paginate(opts)
+    |> Repo.all()
   end
 
-  def all_staff do
+  def all_staff(opts \\ []) do
     query =
       from(u in User,
         where: fragment("? @> ?", u.roles, ^["staff"])
       )
 
-    Repo.all(query)
+    query
+    |> paginate(opts)
+    |> Repo.all()
   end
 
   def add_role(username, role) do
-    user = Users.get_user!(username)
+    user = get_user!(username)
 
     updated_roles =
       user.roles
@@ -54,5 +63,17 @@ defmodule Data.Users do
     user
     |> Ecto.Changeset.change(%{roles: updated_roles})
     |> Repo.update()
+  end
+
+  defp paginate(query, opts) do
+    limit =
+      opts
+      |> Keyword.get(:limit, @default_limit)
+      |> min(@max_limit)
+      |> max(1)
+
+    offset = max(Keyword.get(opts, :offset, 0), 0)
+
+    from(q in query, limit: ^limit, offset: ^offset)
   end
 end

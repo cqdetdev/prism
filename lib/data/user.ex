@@ -11,6 +11,17 @@ defmodule Data.User do
 
     field(:kills, :integer, default: 0)
     field(:deaths, :integer, default: 0)
+    field(:wins, :integer, default: 0)
+    field(:losses, :integer, default: 0)
+    field(:matches_played, :integer, default: 0)
+    field(:elo, :integer, default: 1000)
+    field(:best_elo, :integer, default: 1000)
+    field(:current_streak, :integer, default: 0)
+    field(:best_streak, :integer, default: 0)
+    field(:queue_ratings, :map, default: %{})
+    field(:kit_stats, :map, default: %{})
+    field(:practice_metadata, :map, default: %{})
+    field(:last_seen_region, :string, default: "")
 
     field(:discord_id, :string, default: "")
     field(:link_code, :string, default: "")
@@ -45,6 +56,17 @@ defmodule Data.User do
       :whitelisted,
       :kills,
       :deaths,
+      :wins,
+      :losses,
+      :matches_played,
+      :elo,
+      :best_elo,
+      :current_streak,
+      :best_streak,
+      :queue_ratings,
+      :kit_stats,
+      :practice_metadata,
+      :last_seen_region,
       :discord_id,
       :link_code,
       :staff_mode,
